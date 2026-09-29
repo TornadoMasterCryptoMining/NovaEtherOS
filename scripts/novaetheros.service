@@ -1,0 +1,18 @@
+[Unit]
+Description=NovaEtherOS home cloud dashboard
+After=network-online.target docker.service
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=simple
+WorkingDirectory=__NOVA_DIR__
+Environment=NODE_ENV=production
+Environment=PORT=__NOVA_PORT__
+Environment=DATA_DIR=__NOVA_DIR__/data
+ExecStart=/usr/bin/node apps/server/dist/index.js
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

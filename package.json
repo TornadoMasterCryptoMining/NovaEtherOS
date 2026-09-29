@@ -1,0 +1,16 @@
+{
+  "name": "novaetheros",
+  "version": "0.1.0",
+  "private": true,
+  "description": "NovaEtherOS — a self-hosted home cloud dashboard",
+  "workspaces": ["apps/*"],
+  "scripts": {
+    "dev": "concurrently -n server,web -c cyan,magenta \"npm run dev -w @nova/server\" \"npm run dev -w @nova/web\"",
+    "build": "npm run build -w @nova/web && npm run build -w @nova/server",
+    "start": "npm run start -w @nova/server",
+    "typecheck": "npm run typecheck --workspaces"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  }
+}
