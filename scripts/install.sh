@@ -3,6 +3,10 @@
 # Usage:  curl -fsSL https://raw.githubusercontent.com/TornadoMasterCryptoMining/NovaEtherOS/main/scripts/install.sh | sudo bash
 set -euo pipefail
 
+# Settings from a previous install (written at the end of this script), so
+# updates keep a custom port or directory.
+[[ -f /etc/novaetheros.conf ]] && . /etc/novaetheros.conf
+
 NOVA_REPO="${NOVA_REPO:-https://github.com/TornadoMasterCryptoMining/NovaEtherOS.git}"
 NOVA_BRANCH="${NOVA_BRANCH:-main}"
 NOVA_DIR="${NOVA_DIR:-/opt/novaetheros}"
@@ -92,6 +96,15 @@ cd "$NOVA_DIR"
 npm ci
 npm run build
 
+cat > /etc/novaetheros.conf <<EOF
+NOVA_REPO="$NOVA_REPO"
+NOVA_BRANCH="$NOVA_BRANCH"
+NOVA_DIR="$NOVA_DIR"
+NOVA_PORT="$NOVA_PORT"
+BITCOIN_DATA_DIR="$BITCOIN_DATA_DIR"
+EOF
+install -m 0755 "$NOVA_DIR/scripts/nova" /usr/local/bin/nova
+
 log "Installing systemd services..."
 sed "s|__NOVA_DIR__|$NOVA_DIR|g; s|__NOVA_PORT__|$NOVA_PORT|g; s|__BITCOIN_DATA_DIR__|$BITCOIN_DATA_DIR|g" \
   "$NOVA_DIR/scripts/novaetheros.service" > /etc/systemd/system/novaetheros.service
@@ -104,4 +117,6 @@ systemctl enable --now novaetheros
 systemctl restart novaetheros
 
 IP="$(hostname -I | awk '{print $1}')"
+log "Installed version: $(git -C "$NOVA_DIR" log -1 --format='%h %s')"
+log "Update any time from the dashboard, or with: sudo nova update"
 log "Done! Open http://${IP}$( [[ $NOVA_PORT == 80 ]] || echo ":$NOVA_PORT" ) from any device on your network."

@@ -1,0 +1,77 @@
+#!/usr/bin/env bash
+# NovaEtherOS command-line helper. Installed to /usr/local/bin/nova.
+set -euo pipefail
+
+[[ -f /etc/novaetheros.conf ]] && . /etc/novaetheros.conf
+NOVA_DIR="${NOVA_DIR:-/opt/novaetheros}"
+NOVA_BRANCH="${NOVA_BRANCH:-main}"
+
+need_root() {
+  if [[ $EUID -ne 0 ]]; then
+    echo "This needs root. Run: sudo nova $*" >&2
+    exit 1
+  fi
+}
+
+version() {
+  git -C "$NOVA_DIR" log -1 --format='%h (%cd) %s' --date=short
+}
+
+case "${1:-help}" in
+  update)
+    need_root update
+    echo "Current version: $(version)"
+    git -C "$NOVA_DIR" fetch --depth 1 origin "$NOVA_BRANCH"
+    if [[ "$(git -C "$NOVA_DIR" rev-parse HEAD)" == "$(git -C "$NOVA_DIR" rev-parse FETCH_HEAD)" && "${2:-}" != "--force" ]]; then
+      echo "Already up to date."
+      exit 0
+    fi
+    # Run the *new* installer from a copy, so updating the repo can't change
+    # the script while bash is still reading it.
+    git -C "$NOVA_DIR" show FETCH_HEAD:scripts/install.sh > /run/nova-install.sh
+    bash /run/nova-install.sh
+    rm -f /run/nova-install.sh
+    ;;
+  check)
+    git -C "$NOVA_DIR" fetch --depth 1 origin "$NOVA_BRANCH" 2>/dev/null
+    if [[ "$(git -C "$NOVA_DIR" rev-parse HEAD)" == "$(git -C "$NOVA_DIR" rev-parse FETCH_HEAD)" ]]; then
+      echo "Up to date: $(version)"
+    else
+      echo "Update available. Latest: $(git -C "$NOVA_DIR" log -1 --format='%h %s' FETCH_HEAD)"
+      echo "Run: sudo nova update"
+    fi
+    ;;
+  status)
+    echo "NovaEtherOS $(version)"
+    echo
+    systemctl --no-pager status novaetheros nova-bitcoind 2>/dev/null | grep -E '●|Active:' || true
+    ;;
+  logs)
+    case "${2:-}" in
+      bitcoin) journalctl -u nova-bitcoind -f ;;
+      update) journalctl -u nova-update --no-pager -n 200 ;;
+      *) journalctl -u novaetheros -f ;;
+    esac
+    ;;
+  restart)
+    need_root restart
+    systemctl restart novaetheros
+    echo "NovaEtherOS restarted (the Bitcoin node keeps running)."
+    ;;
+  version)
+    version
+    ;;
+  *)
+    cat <<'EOF'
+Usage: nova <command>
+
+  update [--force]   Update NovaEtherOS (and Bitcoin Core if a new version is bundled)
+  check              Check whether an update is available
+  status             Show NovaEtherOS and Bitcoin node service status
+  logs [bitcoin|update]
+                     Follow NovaEtherOS logs, Bitcoin Core logs, or the last update's output
+  restart            Restart the NovaEtherOS dashboard
+  version            Show the installed version
+EOF
+    ;;
+esac

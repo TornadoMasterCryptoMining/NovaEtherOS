@@ -1,9 +1,10 @@
-export type View = "home" | "bitcoin" | "store";
+export type View = "home" | "bitcoin" | "store" | "system";
 
 const items: { id: View; label: string; icon: string }[] = [
   { id: "home", label: "Home", icon: "🏠" },
   { id: "bitcoin", label: "Bitcoin Node", icon: "₿" },
   { id: "store", label: "App Store", icon: "🛍️" },
+  { id: "system", label: "Settings", icon: "⚙️" },
 ];
 
 export function Dock({ view, onChange }: { view: View; onChange: (v: View) => void }) {

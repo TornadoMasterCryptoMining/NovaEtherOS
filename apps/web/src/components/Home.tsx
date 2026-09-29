@@ -48,8 +48,17 @@ function greeting() {
   return h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
 }
 
-export function Home({ onOpenStore, onOpenBitcoin }: { onOpenStore: () => void; onOpenBitcoin: () => void }) {
+export function Home({
+  onOpenStore,
+  onOpenBitcoin,
+  onOpenSystem,
+}: {
+  onOpenStore: () => void;
+  onOpenBitcoin: () => void;
+  onOpenSystem: () => void;
+}) {
   const { data: sys, error } = usePoll(api.system, 3000);
+  const { data: update } = usePoll(api.update, 300_000);
   const { data: apps } = usePoll(api.apps, 10000);
   const installed = apps?.filter((a) => a.installed) ?? [];
 
@@ -63,6 +72,13 @@ export function Home({ onOpenStore, onOpenBitcoin }: { onOpenStore: () => void; 
             : (error ?? "Connecting…")}
         </p>
       </header>
+
+      {update?.available && (
+        <button className="banner glass update-banner" onClick={onOpenSystem}>
+          <span>A NovaEtherOS update is available.</span>
+          <span className="btn">View update</span>
+        </button>
+      )}
 
       <section className="widgets">
         <Widget

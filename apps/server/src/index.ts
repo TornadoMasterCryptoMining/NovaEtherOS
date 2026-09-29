@@ -5,9 +5,30 @@ import { config } from "./config.js";
 import { getSystemStats } from "./system.js";
 import { installApp, listInstalled, listStoreApps, uninstallApp } from "./apps.js";
 import { BitcoinNode } from "./bitcoin/node.js";
+import { Updater } from "./updater.js";
 
 const app = express();
 app.use(express.json());
+
+const updater = new Updater();
+updater.start();
+
+app.get("/api/update", async (_req, res) => {
+  res.json(await updater.status());
+});
+
+app.post("/api/update/check", async (_req, res) => {
+  res.json(await updater.check());
+});
+
+app.post("/api/update", async (_req, res) => {
+  try {
+    await updater.update();
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(400).json({ ok: false, error: (err as Error).message });
+  }
+});
 
 const bitcoin = new BitcoinNode();
 bitcoin.start().catch((err) => console.error("[bitcoin] failed to start:", err));

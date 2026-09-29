@@ -6,6 +6,7 @@ const dataDir = path.resolve(repoRoot, process.env.DATA_DIR ?? "data");
 const bitcoinDataDir = path.resolve(process.env.BITCOIN_DATA_DIR ?? path.join(dataDir, "bitcoin"));
 
 export const config = {
+  repoRoot,
   port: Number(process.env.PORT ?? 3000),
   appStoreDir: path.resolve(repoRoot, process.env.APP_STORE_DIR ?? "app-store"),
   dataDir,

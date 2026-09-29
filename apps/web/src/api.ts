@@ -91,6 +91,25 @@ export interface MiningCheck {
   detail: string;
 }
 
+export interface Commit {
+  sha: string;
+  date: string;
+  message: string;
+}
+
+export interface UpdateStatus {
+  current: Commit | null;
+  latest: Commit | null;
+  available: boolean;
+  changes: Commit[];
+  last_check: number;
+  check_error: string | null;
+  running: boolean;
+  started_at: number;
+  log: string;
+  unsupported: string | null;
+}
+
 const post = (url: string, body?: unknown) =>
   fetch(url, {
     method: "POST",
@@ -114,6 +133,9 @@ export const api = {
   bitcoinRestart: () => post("/api/bitcoin/restart").then(json),
   bitcoinMiningCheck: () => fetch("/api/bitcoin/mining-check").then((r) => json<MiningCheck[]>(r)),
   bitcoinLogs: () => fetch("/api/bitcoin/logs").then((r) => r.text()),
+  update: () => fetch("/api/update").then((r) => json<UpdateStatus>(r)),
+  updateCheck: () => post("/api/update/check").then((r) => json<UpdateStatus>(r)),
+  updateStart: () => post("/api/update").then(json),
 };
 
 export function formatGB(bytes: number, digits = 0) {
