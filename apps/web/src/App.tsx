@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Home } from "./components/Home";
 import { AppStore } from "./components/AppStore";
 import { Bitcoin } from "./components/Bitcoin";
+import { Blocks } from "./components/Blocks";
 import { System } from "./components/System";
 import { Dock, type View } from "./components/Dock";
 
@@ -19,6 +20,7 @@ export default function App() {
           />
         )}
         {view === "bitcoin" && <Bitcoin />}
+        {view === "blocks" && <Blocks />}
         {view === "store" && <AppStore />}
         {view === "system" && <System />}
       </main>

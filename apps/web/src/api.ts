@@ -91,6 +91,54 @@ export interface MiningCheck {
   detail: string;
 }
 
+export interface BlockSummary {
+  height: number;
+  hash: string;
+  time: number;
+  tx_count: number;
+  size: number;
+  weight: number;
+  total_fee: number;
+  subsidy: number;
+  reward: number;
+  median_feerate: number | null;
+  feerate_range: [number, number] | null;
+  pool: string;
+  payout_address: string | null;
+}
+
+export interface ExplorerData {
+  installed: boolean;
+  blocks: BlockSummary[];
+  next_block: {
+    height: number;
+    tx_count: number;
+    weight: number;
+    total_fee: number;
+    subsidy: number;
+    reward: number;
+    feerate_min: number | null;
+    feerate_median: number | null;
+    feerate_max: number | null;
+  } | null;
+  next_block_error: string | null;
+  mempool: {
+    tx_count: number;
+    vsize: number;
+    usage: number;
+    max_usage: number;
+    total_fee: number;
+    min_feerate: number;
+    blocks_to_clear: number;
+  } | null;
+  fees: { next_block: number | null; half_hour: number | null; hour: number | null; day: number | null };
+  updated_at: number;
+}
+
+export function formatBTC(sats: number, digits = 8) {
+  return `${(sats / 1e8).toFixed(digits)} BTC`;
+}
+
 export interface Commit {
   sha: string;
   date: string;
@@ -132,6 +180,7 @@ export const api = {
   bitcoinSettings: (s: Partial<BitcoinSettings>) => post("/api/bitcoin/settings", s).then((r) => json<BitcoinStatus>(r)),
   bitcoinRestart: () => post("/api/bitcoin/restart").then(json),
   bitcoinMiningCheck: () => fetch("/api/bitcoin/mining-check").then((r) => json<MiningCheck[]>(r)),
+  explorer: () => fetch("/api/bitcoin/explorer").then((r) => json<ExplorerData>(r)),
   bitcoinLogs: () => fetch("/api/bitcoin/logs").then((r) => r.text()),
   update: () => fetch("/api/update").then((r) => json<UpdateStatus>(r)),
   updateCheck: () => post("/api/update/check").then((r) => json<UpdateStatus>(r)),

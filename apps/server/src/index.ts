@@ -54,6 +54,10 @@ app.get("/api/bitcoin/mining-check", async (_req, res) => {
   res.json(await bitcoin.miningCheck());
 });
 
+app.get("/api/bitcoin/explorer", (_req, res) => {
+  res.json({ installed: bitcoin.isInstalled, ...bitcoin.explorer.snapshot() });
+});
+
 app.get("/api/bitcoin/logs", async (_req, res) => {
   res.type("text/plain").send(await bitcoin.logs());
 });

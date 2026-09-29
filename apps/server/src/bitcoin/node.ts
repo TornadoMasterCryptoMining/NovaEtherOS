@@ -9,6 +9,7 @@ import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
 import { config } from "../config.js";
+import { Explorer } from "./explorer.js";
 import { RPC, RPC_IN_WARMUP, RPCError, RPCUnavailable } from "./rpc.js";
 import { JsonStore } from "./store.js";
 import {
@@ -73,7 +74,8 @@ export class BitcoinNode {
   private settings = new JsonStore<StorageSettings>(path.join(this.cfg.stateDir, "settings.json"), DEFAULT_SETTINGS);
   private state = new JsonStore<NodeState>(path.join(this.cfg.stateDir, "state.json"), {});
   private secrets = new JsonStore(path.join(this.cfg.stateDir, "secrets.json"), { rpc_user: "nova", rpc_pass: "" }, 0o600);
-  private rpc: RPC;
+  readonly rpc: RPC;
+  readonly explorer: Explorer;
 
   private installed = false;
   private node: NodeInfo = { state: "starting", message: "Scanning hardware..." };
@@ -90,6 +92,11 @@ export class BitcoinNode {
       this.secrets.update({ rpc_pass: crypto.randomBytes(32).toString("hex") });
     }
     this.rpc = new RPC(`http://127.0.0.1:${this.cfg.rpcPort}`, this.secrets.get("rpc_user"), this.secrets.get("rpc_pass"));
+    this.explorer = new Explorer(this.rpc);
+  }
+
+  get isInstalled() {
+    return this.installed;
   }
 
   // --- lifecycle -----------------------------------------------------------
@@ -107,6 +114,7 @@ export class BitcoinNode {
     }
 
     await this.apply("NovaEtherOS started.");
+    this.explorer.start();
     setInterval(() => void this.poll(), POLL_MS);
     setInterval(() => void this.guard(), GUARD_MS);
   }

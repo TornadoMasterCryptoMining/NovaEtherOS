@@ -140,6 +140,47 @@ details summary { cursor: pointer; color: var(--muted); font-size: 0.85rem; }
 .checks li.bad strong { color: var(--bad); }
 .events li { font-size: 0.88rem; }
 .events li.error { color: var(--bad); }
+/* Blocks & Mempool */
+.center { text-align: center; }
+.chain {
+  display: flex; gap: 14px; overflow-x: auto; padding: 4px 4px 12px; margin-bottom: 8px;
+  scroll-snap-type: x proximity;
+}
+.chain, .table-wrap, .logs { scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, 0.25) transparent; }
+.muted-strong { color: rgba(255, 255, 255, 0.75); }
+.chain-divider { flex: 0 0 2px; align-self: stretch; margin: 0 4px; border-left: 2px dashed rgba(255, 255, 255, 0.25); }
+.cube {
+  position: relative; flex: 0 0 140px; height: 170px; border-radius: 14px;
+  background: rgba(124, 92, 255, 0.18); border: 1px solid rgba(124, 92, 255, 0.45);
+  scroll-snap-align: start; margin-bottom: 22px; overflow: visible;
+}
+.cube-fill {
+  position: absolute; left: 0; right: 0; bottom: 0; border-radius: 0 0 13px 13px;
+  background: linear-gradient(0deg, rgba(124, 92, 255, 0.55), rgba(34, 211, 238, 0.35));
+}
+.cube.next { background: rgba(247, 147, 26, 0.12); border: 1px dashed rgba(247, 147, 26, 0.7); }
+.cube.next .cube-fill { background: linear-gradient(0deg, rgba(247, 147, 26, 0.45), rgba(255, 196, 107, 0.2)); }
+.cube-body {
+  position: relative; height: 100%; padding: 12px; display: flex; flex-direction: column; gap: 3px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+.cube-label { font-weight: 700; color: var(--accent-2); }
+.cube.next .cube-label { color: var(--btc); }
+.cube-body strong { font-size: 1.05rem; }
+.cube-reward { margin-top: auto; font-weight: 600; font-size: 0.85rem; }
+.cube-foot {
+  position: absolute; left: 0; right: 0; bottom: -22px; text-align: center; color: var(--muted);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.fee-tiles { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.fee-tile { background: rgba(255, 255, 255, 0.06); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 4px; }
+.fee-tile strong { font-size: 1.2rem; }
+.table-wrap { overflow-x: auto; }
+.blocks-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; white-space: nowrap; }
+.blocks-table th { text-align: left; color: var(--muted); font-weight: 500; padding: 6px 10px; border-bottom: 1px solid var(--glass-border); }
+.blocks-table td { padding: 8px 10px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); }
+.mono { font-family: ui-monospace, "SF Mono", Consolas, monospace; }
+
 .update-banner { width: 100%; text-align: left; border-color: rgba(124, 92, 255, 0.6); }
 .ok-text { color: var(--ok); }
 .actions { display: flex; gap: 10px; flex-wrap: wrap; }
