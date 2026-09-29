@@ -1,0 +1,29 @@
+[Unit]
+Description=NovaEtherOS built-in Bitcoin node (Bitcoin Core)
+Documentation=https://github.com/TornadoMasterCryptoMining/NovaEtherOS
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=bitcoin
+Group=bitcoin
+# nova.conf is written by NovaEtherOS (Smart Storage picks prune size, dbcache, peers)
+ExecStart=/usr/local/bin/bitcoind -datadir=__BITCOIN_DATA_DIR__ -conf=__BITCOIN_DATA_DIR__/nova.conf
+# Bitcoin Core can take a while to flush its database on shutdown, especially
+# on slow disks. Killing it early forces a long re-check on the next start.
+TimeoutStopSec=15min
+KillSignal=SIGTERM
+Restart=on-failure
+RestartSec=30
+
+# Hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+PrivateDevices=true
+MemoryDenyWriteExecute=true
+
+[Install]
+WantedBy=multi-user.target

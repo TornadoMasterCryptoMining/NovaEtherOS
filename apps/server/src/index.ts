@@ -4,9 +4,38 @@ import path from "node:path";
 import { config } from "./config.js";
 import { getSystemStats } from "./system.js";
 import { installApp, listInstalled, listStoreApps, uninstallApp } from "./apps.js";
+import { BitcoinNode } from "./bitcoin/node.js";
 
 const app = express();
 app.use(express.json());
+
+const bitcoin = new BitcoinNode();
+bitcoin.start().catch((err) => console.error("[bitcoin] failed to start:", err));
+
+app.get("/api/bitcoin", (_req, res) => {
+  res.json(bitcoin.snapshot());
+});
+
+app.post("/api/bitcoin/settings", (req, res) => {
+  res.json(bitcoin.saveSettings(req.body ?? {}));
+});
+
+app.post("/api/bitcoin/restart", (_req, res) => {
+  try {
+    bitcoin.restart();
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(400).json({ ok: false, error: (err as Error).message });
+  }
+});
+
+app.get("/api/bitcoin/mining-check", async (_req, res) => {
+  res.json(await bitcoin.miningCheck());
+});
+
+app.get("/api/bitcoin/logs", async (_req, res) => {
+  res.type("text/plain").send(await bitcoin.logs());
+});
 
 app.get("/api/system", async (_req, res) => {
   res.json(await getSystemStats());

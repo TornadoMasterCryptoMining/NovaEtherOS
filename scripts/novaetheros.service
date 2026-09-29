@@ -10,6 +10,7 @@ WorkingDirectory=__NOVA_DIR__
 Environment=NODE_ENV=production
 Environment=PORT=__NOVA_PORT__
 Environment=DATA_DIR=__NOVA_DIR__/data
+Environment=BITCOIN_DATA_DIR=__BITCOIN_DATA_DIR__
 ExecStart=/usr/bin/node apps/server/dist/index.js
 Restart=on-failure
 RestartSec=5

@@ -7,6 +7,13 @@ NOVA_REPO="${NOVA_REPO:-https://github.com/TornadoMasterCryptoMining/NovaEtherOS
 NOVA_BRANCH="${NOVA_BRANCH:-main}"
 NOVA_DIR="${NOVA_DIR:-/opt/novaetheros}"
 NOVA_PORT="${NOVA_PORT:-80}"
+BITCOIN_DATA_DIR="${BITCOIN_DATA_DIR:-/var/lib/novaetheros/bitcoin}"
+
+# Bitcoin Core release built into NovaEtherOS.
+# Checksums from https://bitcoincore.org/bin/bitcoin-core-31.1/SHA256SUMS
+BITCOIN_VERSION="31.1"
+BITCOIN_SHA256_AMD64="b80d9c3e04da78fb6f0569685673418cf686fadba9042d926d13fb87ff503f9e"
+BITCOIN_SHA256_ARM64="dcf1873f2208ba4f962f3398d47e154c39c0084be8f4553e05c940d0ace3d004"
 
 # Keep apt fully unattended (no needrestart / debconf pop-ups mid-install)
 export DEBIAN_FRONTEND=noninteractive
@@ -48,6 +55,29 @@ if ! command -v node >/dev/null || [[ "$(node -v | cut -d. -f1 | tr -d v)" -lt 2
   apt-get install -y nodejs
 fi
 
+if [[ "$(/usr/local/bin/bitcoind -version 2>/dev/null | head -1)" != *"v${BITCOIN_VERSION}"* ]]; then
+  log "Installing Bitcoin Core ${BITCOIN_VERSION}..."
+  case "$(dpkg --print-architecture)" in
+    amd64) triple=x86_64-linux-gnu; sum="$BITCOIN_SHA256_AMD64" ;;
+    arm64) triple=aarch64-linux-gnu; sum="$BITCOIN_SHA256_ARM64" ;;
+    *) echo "Unsupported architecture for Bitcoin Core: $(dpkg --print-architecture)" >&2; exit 1 ;;
+  esac
+  tmp="$(mktemp -d)"
+  curl -fsSL -o "$tmp/bitcoin.tar.gz" \
+    "https://bitcoincore.org/bin/bitcoin-core-${BITCOIN_VERSION}/bitcoin-${BITCOIN_VERSION}-${triple}.tar.gz"
+  echo "${sum}  $tmp/bitcoin.tar.gz" | sha256sum -c -
+  tar -xzf "$tmp/bitcoin.tar.gz" -C "$tmp" --strip-components=1
+  # Stop a running node before swapping the binary (it flushes to disk first)
+  systemctl stop nova-bitcoind 2>/dev/null || true
+  install -m 0755 "$tmp/bin/bitcoind" "$tmp/bin/bitcoin-cli" /usr/local/bin/
+  rm -rf "$tmp"
+fi
+
+if ! id bitcoin >/dev/null 2>&1; then
+  useradd --system --home-dir "$BITCOIN_DATA_DIR" --shell /usr/sbin/nologin bitcoin
+fi
+install -d -m 0750 -o bitcoin -g bitcoin "$BITCOIN_DATA_DIR"
+
 if [[ -d "$NOVA_DIR/.git" ]]; then
   log "Updating existing install in $NOVA_DIR..."
   git -C "$NOVA_DIR" fetch --depth 1 origin "$NOVA_BRANCH"
@@ -62,9 +92,13 @@ cd "$NOVA_DIR"
 npm ci
 npm run build
 
-log "Installing systemd service..."
-sed "s|__NOVA_DIR__|$NOVA_DIR|g; s|__NOVA_PORT__|$NOVA_PORT|g" \
+log "Installing systemd services..."
+sed "s|__NOVA_DIR__|$NOVA_DIR|g; s|__NOVA_PORT__|$NOVA_PORT|g; s|__BITCOIN_DATA_DIR__|$BITCOIN_DATA_DIR|g" \
   "$NOVA_DIR/scripts/novaetheros.service" > /etc/systemd/system/novaetheros.service
+# The Bitcoin node is started and managed by NovaEtherOS (Smart Storage decides
+# how it runs), so this unit is installed but not enabled on its own.
+sed "s|__BITCOIN_DATA_DIR__|$BITCOIN_DATA_DIR|g" \
+  "$NOVA_DIR/scripts/nova-bitcoind.service" > /etc/systemd/system/nova-bitcoind.service
 systemctl daemon-reload
 systemctl enable --now novaetheros
 systemctl restart novaetheros

@@ -75,3 +75,72 @@ button { font: inherit; color: inherit; cursor: pointer; }
 }
 .dock-item:hover { transform: translateY(-4px); }
 .dock-item.active { background: rgba(255, 255, 255, 0.14); }
+.dock-item.btc { color: var(--btc); font-weight: 700; }
+
+/* Bitcoin node */
+:root { --btc: #f7931a; --ok: #34d399; --bad: #ff7a90; --busy: #fbbf24; }
+.pill {
+  display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 0.75rem; font-weight: 600;
+  vertical-align: middle; background: rgba(255, 255, 255, 0.1);
+}
+.pill.ok { color: var(--ok); background: rgba(52, 211, 153, 0.14); }
+.pill.bad { color: var(--bad); background: rgba(255, 122, 144, 0.14); }
+.pill.busy { color: var(--busy); background: rgba(251, 191, 36, 0.14); }
+.pill.idle { color: var(--muted); }
+
+.btc-card {
+  display: block; width: 100%; text-align: left; margin-top: 16px; padding: 20px; border-radius: 20px;
+  transition: transform 0.2s;
+}
+.btc-card:hover { transform: translateY(-2px); }
+.btc-card-head { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.btc-card-head strong { flex: 1; font-size: 1.1rem; }
+.btc-logo {
+  width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--btc); color: #fff; font-weight: 700;
+}
+.btc-card-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 12px; }
+.btc-card-stats > div { display: flex; flex-direction: column; }
+.btc-card-stats .widget-value { font-size: 1.4rem; }
+.btc-card p { margin: 10px 0 0; }
+.bitcoin .bar > div, .btc-card .bar > div { background: linear-gradient(90deg, var(--btc), #ffc46b); }
+
+.banner {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+  padding: 14px 18px; border-radius: 16px; margin-bottom: 16px; border-color: rgba(247, 147, 26, 0.5);
+}
+.panels { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; margin-top: 16px; }
+.panel { border-radius: 20px; padding: 20px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.panel.wide { grid-column: 1 / -1; }
+.panel h2 { margin: 0; font-size: 1.1rem; }
+.panel p { margin: 0; }
+.panel .btn { align-self: flex-start; }
+.big { font-size: 1.5rem; font-weight: 600; }
+.facts { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; margin: 6px 0 0; font-size: 0.9rem; }
+.facts dt { color: var(--muted); }
+.facts dd { margin: 0; overflow-wrap: anywhere; }
+.mono dd { font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: 0.85rem; }
+.link { background: none; border: 0; padding: 0; color: var(--accent-2); font-size: 0.8rem; }
+
+.segmented { display: flex; background: rgba(255, 255, 255, 0.06); border-radius: 12px; padding: 4px; gap: 4px; }
+.segmented button { flex: 1; border: 0; background: none; padding: 8px; border-radius: 9px; font-size: 0.9rem; }
+.segmented button.on { background: rgba(255, 255, 255, 0.16); font-weight: 600; }
+.field { display: flex; flex-direction: column; gap: 4px; font-size: 0.85rem; color: var(--muted); margin-top: 6px; }
+.field input {
+  font: inherit; color: var(--text); background: rgba(0, 0, 0, 0.25); border: 1px solid var(--glass-border);
+  border-radius: 10px; padding: 8px 10px;
+}
+.check { display: flex; gap: 8px; align-items: flex-start; font-size: 0.85rem; margin-top: 8px; }
+.check.warn { color: var(--busy); }
+details summary { cursor: pointer; color: var(--muted); font-size: 0.85rem; }
+
+.checks, .events { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.checks li { display: flex; flex-direction: column; }
+.checks li.ok strong { color: var(--ok); }
+.checks li.bad strong { color: var(--bad); }
+.events li { font-size: 0.88rem; }
+.events li.error { color: var(--bad); }
+.logs {
+  max-height: 360px; overflow: auto; background: rgba(0, 0, 0, 0.4); border-radius: 12px; padding: 12px;
+  font-size: 0.75rem; white-space: pre-wrap; word-break: break-all;
+}

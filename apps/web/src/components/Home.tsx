@@ -1,13 +1,54 @@
 import { api, formatBytes } from "../api";
 import { usePoll } from "../usePoll";
 import { Widget } from "./Widget";
+import { StatusPill, syncPercent } from "./Bitcoin";
+
+function BitcoinCard({ onOpen }: { onOpen: () => void }) {
+  const { data: s } = usePoll(api.bitcoin, 5000);
+  if (!s) return null;
+  const pct = syncPercent(s);
+  const plan = s.storage.plan;
+  return (
+    <button className="btc-card glass" onClick={onOpen}>
+      <div className="btc-card-head">
+        <span className="btc-logo">₿</span>
+        <strong>Bitcoin Node</strong>
+        <StatusPill state={s.node.state} />
+      </div>
+      <div className="btc-card-stats">
+        <div>
+          <span className="widget-label">Sync</span>
+          <span className="widget-value">{pct.toFixed(pct === 100 ? 0 : 2)}%</span>
+        </div>
+        <div>
+          <span className="widget-label">Block</span>
+          <span className="widget-value">{s.node.blocks?.toLocaleString() ?? "–"}</span>
+        </div>
+        <div>
+          <span className="widget-label">Peers</span>
+          <span className="widget-value">{s.node.peers ?? "–"}</span>
+        </div>
+        <div>
+          <span className="widget-label">Storage</span>
+          <span className="widget-value">
+            {!plan || plan.status !== "ok" ? "–" : plan.mode === "full" ? "Full" : formatBytes(plan.prune_mib * 1024 * 1024)}
+          </span>
+        </div>
+      </div>
+      <div className="bar">
+        <div style={{ width: `${pct}%` }} />
+      </div>
+      <p className="muted small">{s.node.message}</p>
+    </button>
+  );
+}
 
 function greeting() {
   const h = new Date().getHours();
   return h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
 }
 
-export function Home({ onOpenStore }: { onOpenStore: () => void }) {
+export function Home({ onOpenStore, onOpenBitcoin }: { onOpenStore: () => void; onOpenBitcoin: () => void }) {
   const { data: sys, error } = usePoll(api.system, 3000);
   const { data: apps } = usePoll(api.apps, 10000);
   const installed = apps?.filter((a) => a.installed) ?? [];
@@ -51,6 +92,8 @@ export function Home({ onOpenStore }: { onOpenStore: () => void }) {
           />
         )}
       </section>
+
+      <BitcoinCard onOpen={onOpenBitcoin} />
 
       <section className="app-grid">
         {installed.map((a) => (

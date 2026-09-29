@@ -1,7 +1,8 @@
-export type View = "home" | "store";
+export type View = "home" | "bitcoin" | "store";
 
 const items: { id: View; label: string; icon: string }[] = [
   { id: "home", label: "Home", icon: "🏠" },
+  { id: "bitcoin", label: "Bitcoin Node", icon: "₿" },
   { id: "store", label: "App Store", icon: "🛍️" },
 ];
 
@@ -11,7 +12,7 @@ export function Dock({ view, onChange }: { view: View; onChange: (v: View) => vo
       {items.map((item) => (
         <button
           key={item.id}
-          className={`dock-item ${view === item.id ? "active" : ""}`}
+          className={`dock-item ${view === item.id ? "active" : ""} ${item.id === "bitcoin" ? "btc" : ""}`}
           onClick={() => onChange(item.id)}
           title={item.label}
         >
