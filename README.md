@@ -14,7 +14,7 @@ A self-hosted home cloud dashboard, inspired by UmbrelOS. Runs on a regular Debi
 2. Run:
 
    ```bash
-   curl -fsSL https://raw.githubusercontent.com/OWNER/NovaEtherOS/main/scripts/install.sh | sudo bash
+   curl -fsSL https://raw.githubusercontent.com/TornadoMasterCryptoMining/NovaEtherOS/main/scripts/install.sh | sudo bash
    ```
 
 3. Open `http://<machine-ip>` from any device on your network.

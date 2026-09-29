@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # NovaEtherOS installer for Debian 12+ (tested target: MacBook Air running Debian).
-# Usage:  curl -fsSL https://raw.githubusercontent.com/OWNER/NovaEtherOS/main/scripts/install.sh | sudo bash
+# Usage:  curl -fsSL https://raw.githubusercontent.com/TornadoMasterCryptoMining/NovaEtherOS/main/scripts/install.sh | sudo bash
 set -euo pipefail
 
-NOVA_REPO="${NOVA_REPO:-https://github.com/OWNER/NovaEtherOS.git}"
+NOVA_REPO="${NOVA_REPO:-https://github.com/TornadoMasterCryptoMining/NovaEtherOS.git}"
 NOVA_BRANCH="${NOVA_BRANCH:-main}"
 NOVA_DIR="${NOVA_DIR:-/opt/novaetheros}"
 NOVA_PORT="${NOVA_PORT:-80}"
