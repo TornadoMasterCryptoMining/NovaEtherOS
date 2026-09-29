@@ -8,6 +8,11 @@ NOVA_BRANCH="${NOVA_BRANCH:-main}"
 NOVA_DIR="${NOVA_DIR:-/opt/novaetheros}"
 NOVA_PORT="${NOVA_PORT:-80}"
 
+# Keep apt fully unattended (no needrestart / debconf pop-ups mid-install)
+export DEBIAN_FRONTEND=noninteractive
+export NEEDRESTART_MODE=a
+export NEEDRESTART_SUSPEND=1
+
 log() { printf '\033[1;35m[NovaEtherOS]\033[0m %s\n' "$*"; }
 
 if [[ $EUID -ne 0 ]]; then
