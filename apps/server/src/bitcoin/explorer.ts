@@ -33,6 +33,8 @@ const POOL_TAGS: [string, string][] = [
   ["ckpool", "Solo CK"],
   ["Public Pool", "Public Pool (solo)"],
   ["Nova Solo Pool", "Nova Solo Pool"],
+  // Blocks found by this machine's built-in solo pool.
+  ["/NovaEtherOS/", "NovaEtherOS"],
 ];
 
 export interface BlockSummary {

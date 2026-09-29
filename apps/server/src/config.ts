@@ -12,6 +12,12 @@ export const config = {
   dataDir,
   webDist: path.resolve(repoRoot, "apps/web/dist"),
 
+  // Built-in solo mining pool (stratum v1)
+  pool: {
+    port: Number(process.env.POOL_PORT ?? 2018),
+    dataDir: path.join(dataDir, "pool"),
+  },
+
   // Built-in Bitcoin node (Bitcoin Core runs natively as a systemd service)
   bitcoin: {
     bitcoind: process.env.BITCOIND_BIN ?? "/usr/local/bin/bitcoind",

@@ -94,7 +94,7 @@ function NextBlockCube({ data }: { data: ExplorerData }) {
 
 function BlockCube({ block: b, now }: { block: BlockSummary; now: number }) {
   return (
-    <div className="cube" role="listitem" title={b.hash}>
+    <div className={`cube ${b.pool === "NovaEtherOS" ? "mine" : ""}`} role="listitem" title={b.hash}>
       <div className="cube-fill" style={{ height: `${fullness(b.weight)}%` }} />
       <div className="cube-body">
         <span className="cube-label">{b.height.toLocaleString()}</span>
@@ -105,7 +105,7 @@ function BlockCube({ block: b, now }: { block: BlockSummary; now: number }) {
         <span className="cube-reward">{formatBTC(b.reward, 3)}</span>
       </div>
       <span className="cube-foot small" title={b.pool}>
-        {b.pool}
+        {b.pool === "NovaEtherOS" ? "⛏️ Your block!" : b.pool}
       </span>
     </div>
   );

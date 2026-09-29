@@ -6,6 +6,7 @@ import { getSystemStats } from "./system.js";
 import { installApp, listInstalled, listStoreApps, uninstallApp } from "./apps.js";
 import { BitcoinNode } from "./bitcoin/node.js";
 import { Updater } from "./updater.js";
+import { SoloPool } from "./pool/pool.js";
 
 const app = express();
 app.use(express.json());
@@ -32,6 +33,19 @@ app.post("/api/update", async (_req, res) => {
 
 const bitcoin = new BitcoinNode();
 bitcoin.start().catch((err) => console.error("[bitcoin] failed to start:", err));
+
+const pool = new SoloPool({
+  rpc: bitcoin.rpc,
+  isNodeReady: () => bitcoin.isSynced,
+  dataDir: config.pool.dataDir,
+  port: config.pool.port,
+  log: (message, level) => bitcoin.logEvent(`Solo pool: ${message}`, level),
+});
+pool.start().catch((err) => console.error("[pool] failed to start:", err));
+
+app.get("/api/pool", (_req, res) => {
+  res.json({ host: bitcoin.lanHost, ...pool.snapshot() });
+});
 
 app.get("/api/bitcoin", (_req, res) => {
   res.json(bitcoin.snapshot());

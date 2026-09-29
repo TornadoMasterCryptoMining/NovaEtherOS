@@ -8,7 +8,7 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test src/bitcoin/storage.test.ts src/bitcoin/explorer.test.ts"
+    "test": "tsx --test src/bitcoin/storage.test.ts src/bitcoin/explorer.test.ts src/pool/pool.test.ts"
   },
   "dependencies": {
     "express": "^5.1.0",

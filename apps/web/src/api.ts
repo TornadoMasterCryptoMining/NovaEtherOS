@@ -135,6 +135,72 @@ export interface ExplorerData {
   updated_at: number;
 }
 
+export interface PoolStatus {
+  host: string;
+  ready: boolean;
+  status: string;
+  port: number;
+  error: string | null;
+  hashrate: number;
+  workers: {
+    name: string;
+    address: string;
+    connected: boolean;
+    remote: string | null;
+    difficulty: number | null;
+    hashrate: number;
+    accepted: number;
+    rejected: number;
+    best: number;
+    last_share: number | null;
+  }[];
+  template: { height: number; reward: number; tx_count: number } | null;
+  network_difficulty: number | null;
+  expected_seconds: number | null;
+  selftest: { ok: boolean; result: string | null; height: number; time: number } | null;
+  found: {
+    height: number;
+    hash: string;
+    worker: string;
+    address: string;
+    reward: number;
+    time: number;
+    accepted: boolean;
+    result: string | null;
+  }[];
+  best_share: { difficulty: number; worker: string; time: number } | null;
+  totals: { accepted: number; rejected: number };
+}
+
+export function formatHashrate(hs: number) {
+  const units = ["H/s", "KH/s", "MH/s", "GH/s", "TH/s", "PH/s", "EH/s"];
+  let i = 0;
+  while (hs >= 1000 && i < units.length - 1) {
+    hs /= 1000;
+    i++;
+  }
+  return `${hs.toFixed(hs >= 100 || i === 0 ? 0 : 2)} ${units[i]}`;
+}
+
+export function formatDifficulty(d: number) {
+  const units = ["", "K", "M", "G", "T", "P"];
+  let i = 0;
+  while (d >= 1000 && i < units.length - 1) {
+    d /= 1000;
+    i++;
+  }
+  return `${d.toFixed(d >= 100 || i === 0 ? (d < 10 ? 2 : 0) : 2)}${units[i]}`;
+}
+
+export function formatDuration(seconds: number) {
+  const minute = 60, hour = 3600, day = 86400, year = 365.25 * day;
+  if (seconds < hour) return `${Math.round(seconds / minute)} minutes`;
+  if (seconds < day) return `${(seconds / hour).toFixed(1)} hours`;
+  if (seconds < year) return `${Math.round(seconds / day)} days`;
+  const years = seconds / year;
+  return `${years < 1000 ? Math.round(years).toLocaleString() : formatDifficulty(years)} years`;
+}
+
 export function formatBTC(sats: number, digits = 8) {
   return `${(sats / 1e8).toFixed(digits)} BTC`;
 }
@@ -180,6 +246,7 @@ export const api = {
   bitcoinSettings: (s: Partial<BitcoinSettings>) => post("/api/bitcoin/settings", s).then((r) => json<BitcoinStatus>(r)),
   bitcoinRestart: () => post("/api/bitcoin/restart").then(json),
   bitcoinMiningCheck: () => fetch("/api/bitcoin/mining-check").then((r) => json<MiningCheck[]>(r)),
+  pool: () => fetch("/api/pool").then((r) => json<PoolStatus>(r)),
   explorer: () => fetch("/api/bitcoin/explorer").then((r) => json<ExplorerData>(r)),
   bitcoinLogs: () => fetch("/api/bitcoin/logs").then((r) => r.text()),
   update: () => fetch("/api/update").then((r) => json<UpdateStatus>(r)),

@@ -99,6 +99,20 @@ export class BitcoinNode {
     return this.installed;
   }
 
+  // Synced and serving RPC: ready to hand out mining work.
+  get isSynced() {
+    return this.node.state === "running";
+  }
+
+  get lanHost() {
+    return lanAddress();
+  }
+
+  // Lets other built-in services (the solo pool) add to the activity feed.
+  logEvent(message: string, level: "info" | "error" = "info") {
+    this.event(message, level);
+  }
+
   // --- lifecycle -----------------------------------------------------------
 
   async start() {

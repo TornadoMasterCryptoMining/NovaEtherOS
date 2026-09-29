@@ -181,6 +181,12 @@ details summary { cursor: pointer; color: var(--muted); font-size: 0.85rem; }
 .blocks-table td { padding: 8px 10px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); }
 .mono { font-family: ui-monospace, "SF Mono", Consolas, monospace; }
 
+.cube.mine { border: 2px solid var(--btc); box-shadow: 0 0 24px rgba(247, 147, 26, 0.6); }
+.cube.mine + .cube-foot, .cube.mine .cube-foot { color: var(--btc); font-weight: 700; }
+.found-banner { border-color: var(--btc); font-weight: 600; }
+.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--muted); margin-right: 4px; }
+.dot.on { background: var(--ok); box-shadow: 0 0 6px var(--ok); }
+
 .update-banner { width: 100%; text-align: left; border-color: rgba(124, 92, 255, 0.6); }
 .ok-text { color: var(--ok); }
 .actions { display: flex; gap: 10px; flex-wrap: wrap; }
