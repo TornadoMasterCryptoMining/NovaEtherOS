@@ -76,6 +76,12 @@ move_bitcoin() {
     return
   fi
 
+  # Whatever happens from here (copy error, drive unplugged...), bring the
+  # dashboard back. The data folder setting only changes after a successful
+  # copy, so on failure the node simply resumes on its old data.
+  # (old_dir is expanded now; the trap may run after this function's locals are gone.)
+  trap "status=\$?; if [[ \$status -ne 0 ]]; then echo \"Move FAILED (exit \$status). The Bitcoin node stays on $old_dir.\"; fi; systemctl start novaetheros || true" EXIT
+
   echo "Stopping NovaEtherOS and Bitcoin Core (Bitcoin Core can take a few minutes to shut down safely)..."
   systemctl stop novaetheros
   systemctl stop nova-bitcoind 2>/dev/null || true
