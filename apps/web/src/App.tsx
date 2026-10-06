@@ -4,6 +4,7 @@ import { AppStore } from "./components/AppStore";
 import { Bitcoin } from "./components/Bitcoin";
 import { Blocks } from "./components/Blocks";
 import { Mining } from "./components/Mining";
+import { Miners } from "./components/Miners";
 import { System } from "./components/System";
 import { Dock, type View } from "./components/Dock";
 
@@ -21,6 +22,7 @@ export default function App() {
           />
         )}
         {view === "bitcoin" && <Bitcoin />}
+        {view === "miners" && <Miners />}
         {view === "mining" && <Mining />}
         {view === "blocks" && <Blocks />}
         {view === "store" && <AppStore />}

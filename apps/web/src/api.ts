@@ -206,6 +206,74 @@ export function formatBTC(sats: number, digits = 8) {
   return `${(sats / 1e8).toFixed(digits)} BTC`;
 }
 
+export interface MinerStats {
+  hostname: string | null;
+  nickname: string | null;
+  model: string | null;
+  asic: string | null;
+  firmware: string | null;
+  version: string | null;
+  state: string | null;
+  hashrate: number;
+  hashrate_1h: number | null;
+  power: number;
+  efficiency: number | null;
+  temp: number | null;
+  vr_temp: number | null;
+  frequency: number | null;
+  core_voltage: number | null;
+  core_voltage_actual: number | null;
+  fan_percent: number | null;
+  fan_rpm: number | null;
+  auto_fan: boolean;
+  manual_fan: number | null;
+  temp_target: number | null;
+  overheat: boolean;
+  shares_accepted: number | null;
+  shares_rejected: number | null;
+  best_diff: number | null;
+  best_session_diff: number | null;
+  found_blocks: number;
+  uptime: number | null;
+  wifi_rssi: number | null;
+  pool: {
+    url: string | null;
+    port: number | null;
+    user: string | null;
+    connected: boolean | null;
+    using_fallback: boolean;
+    fallback_url: string | null;
+    fallback_port: number | null;
+  };
+  locked: boolean;
+}
+
+export interface MinersStatus {
+  miners: {
+    id: string;
+    ip: string;
+    online: boolean;
+    last_seen: number | null;
+    error: string | null;
+    stats: MinerStats | null;
+    on_nova_pool: boolean;
+    nova_pool_backup: boolean;
+  }[];
+  totals: { hashrate: number; power: number; online: number };
+  scanning: boolean;
+  scan_progress: { done: number; total: number };
+  last_scan: number | null;
+  limits: Record<"frequency" | "coreVoltage" | "manualFanSpeed" | "temptarget", { min: number; max: number }>;
+}
+
+export interface MinerSettings {
+  frequency?: number;
+  coreVoltage?: number;
+  autofanspeed?: boolean;
+  manualFanSpeed?: number;
+  temptarget?: number;
+}
+
 export interface Drive {
   path: string;
   model: string;
@@ -278,6 +346,13 @@ export const api = {
   pool: () => fetch("/api/pool").then((r) => json<PoolStatus>(r)),
   explorer: () => fetch("/api/bitcoin/explorer").then((r) => json<ExplorerData>(r)),
   bitcoinLogs: () => fetch("/api/bitcoin/logs").then((r) => r.text()),
+  miners: () => fetch("/api/miners").then((r) => json<MinersStatus>(r)),
+  minersScan: () => post("/api/miners/scan").then(json),
+  minerAdd: (ip: string) => post("/api/miners", { ip }).then(json),
+  minerRemove: (id: string) => fetch(`/api/miners/${encodeURIComponent(id)}`, { method: "DELETE" }).then(json),
+  minerSettings: (id: string, s: MinerSettings) =>
+    post(`/api/miners/${encodeURIComponent(id)}/settings`, s).then((r) => json<{ restarted: boolean }>(r)),
+  minerRestart: (id: string) => post(`/api/miners/${encodeURIComponent(id)}/restart`).then(json),
   storage: () => fetch("/api/storage").then((r) => json<StorageStatus>(r)),
   useForBitcoin: (device: string, confirm: string, deleteOld: boolean) =>
     post("/api/storage/use-for-bitcoin", { device, confirm, deleteOld }).then(json),

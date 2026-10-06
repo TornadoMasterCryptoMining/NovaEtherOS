@@ -8,6 +8,7 @@ import { BitcoinNode } from "./bitcoin/node.js";
 import { Updater } from "./updater.js";
 import { SoloPool } from "./pool/pool.js";
 import { Storage } from "./drives.js";
+import { Miners } from "./miners/miners.js";
 
 const app = express();
 app.use(express.json());
@@ -63,6 +64,29 @@ pool.start().catch((err) => console.error("[pool] failed to start:", err));
 app.get("/api/pool", (_req, res) => {
   res.json({ host: bitcoin.lanHost, ...pool.snapshot() });
 });
+
+const miners = new Miners(config.dataDir);
+miners.start();
+
+// Wrap handlers so errors come back as { ok: false, error } with a 400.
+const handle =
+  (fn: (req: express.Request) => Promise<unknown> | unknown) =>
+  async (req: express.Request, res: express.Response) => {
+    try {
+      res.json((await fn(req)) ?? { ok: true });
+    } catch (err) {
+      res.status(400).json({ ok: false, error: (err as Error).message });
+    }
+  };
+
+app.get("/api/miners", (_req, res) => {
+  res.json(miners.snapshot(bitcoin.lanHost, config.pool.port));
+});
+app.post("/api/miners/scan", handle(() => void miners.scan()));
+app.post("/api/miners", handle(async (req) => ({ ok: true, id: await miners.add(String(req.body?.ip ?? "").trim()) })));
+app.delete("/api/miners/:id", handle((req) => miners.remove(String(req.params.id))));
+app.post("/api/miners/:id/settings", handle((req) => miners.applySettings(String(req.params.id), req.body ?? {})));
+app.post("/api/miners/:id/restart", handle((req) => miners.restart(String(req.params.id))));
 
 app.get("/api/bitcoin", (_req, res) => {
   res.json(bitcoin.snapshot());

@@ -74,6 +74,12 @@ NovaEtherOS has a built-in stratum pool (no Docker), fed directly by your node's
 
 The **Solo Mining** page shows miners, hashrate, best share, expected time to a block and any blocks found. Found blocks are also highlighted on **Blocks & Mempool**.
 
+## Miners
+
+The **Miners** page finds Bitaxe-family miners on your network by itself (any firmware with the AxeOS / ESP-Miner API, including NovaForge / NovaMiningOS) and re-scans every 30 minutes, following a miner by its MAC address if its IP changes. You can also add one by IP.
+
+For each miner it shows hashrate (now and 1 h), chip and regulator temperature, power and efficiency (J/TH), fan, shares, best difficulty, uptime, and which pool it's on (with a badge when it's mining to this NovaEtherOS). **Tune** changes clock, core voltage, fan (auto with a temperature target, or fixed) within the same limits as the miner's own settings page; clock/voltage changes restart the miner. Pool settings are left to you, on the miner itself.
+
 ## Ports
 
 | Port | Use |
