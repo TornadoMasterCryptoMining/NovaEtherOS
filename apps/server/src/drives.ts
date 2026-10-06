@@ -8,11 +8,12 @@ import path from "node:path";
 import { promisify } from "node:util";
 import { config } from "./config.js";
 import { JsonStore } from "./bitcoin/store.js";
+import { anyRunning, startJob, unitLog, unitRunning } from "./system-jobs.js";
 
 const run = promisify(execFile);
 
 const NOVA_CLI = "/usr/local/bin/nova";
-const JOB_UNIT = "nova-storage";
+const JOB_PREFIX = "nova-storage";
 const SYSTEM_MOUNTS = new Set(["/", "/boot", "/boot/efi", "/usr", "/var", "[SWAP]"]);
 
 interface LsblkDevice {
@@ -115,6 +116,7 @@ export class Storage {
   private job = new JsonStore(path.join(config.dataDir, "storage-job.json"), {
     started_at: 0,
     device: null as string | null,
+    unit: null as string | null,
   });
 
   get supported() {
@@ -130,26 +132,11 @@ export class Storage {
   }
 
   private async jobRunning() {
-    if (!this.supported) return false;
-    try {
-      const { stdout } = await run("systemctl", ["is-active", JOB_UNIT]);
-      return ["active", "activating"].includes(stdout.trim());
-    } catch {
-      return false;
-    }
+    return (await unitRunning(this.job.get("unit"))) || (await anyRunning(JOB_PREFIX));
   }
 
-  private async jobLog() {
-    const since = this.job.get("started_at");
-    if (!since || !this.supported) return "";
-    try {
-      const { stdout } = await run("journalctl", [
-        "-u", JOB_UNIT, "--since", `@${Math.floor(since / 1000)}`, "-o", "cat", "--no-pager", "-n", "200",
-      ]);
-      return stdout;
-    } catch {
-      return "";
-    }
+  private jobLog() {
+    return unitLog(this.job.get("unit") ?? JOB_PREFIX, this.job.get("started_at"), 200);
   }
 
   async status() {
@@ -188,10 +175,10 @@ export class Storage {
     if (drive.empty) throw new Error(`${device} has no disk in it (probably the card reader).`);
     if (drive.bitcoin) throw new Error("The Bitcoin node already uses this drive.");
 
-    this.job.update({ started_at: Date.now(), device });
-    await run("systemd-run", [
-      "--unit", JOB_UNIT, "--collect", "--no-block", "--property=Type=oneshot",
+    const startedAt = Date.now();
+    const unit = await startJob(JOB_PREFIX, [
       NOVA_CLI, "setup-drive", device, "--yes", deleteOld ? "--delete-old" : "--keep-old",
     ]);
+    this.job.update({ started_at: startedAt, device, unit });
   }
 }

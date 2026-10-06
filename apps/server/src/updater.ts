@@ -7,11 +7,12 @@ import path from "node:path";
 import { promisify } from "node:util";
 import { config } from "./config.js";
 import { JsonStore } from "./bitcoin/store.js";
+import { anyRunning, startJob, unitLog, unitRunning } from "./system-jobs.js";
 
 const run = promisify(execFile);
 
 const NOVA_CLI = "/usr/local/bin/nova";
-const UPDATE_UNIT = "nova-update";
+const UPDATE_PREFIX = "nova-update";
 const AUTO_CHECK_MS = 6 * 60 * 60 * 1000;
 
 export interface Commit {
@@ -62,6 +63,7 @@ export class Updater {
     // Result of the last successful check, and the installed commit it was made against.
     available: false,
     checked_head: null as string | null,
+    unit: null as string | null, // systemd unit of the last update run
   });
 
   start() {
@@ -136,26 +138,11 @@ export class Updater {
   }
 
   private async running() {
-    if (process.platform !== "linux") return false;
-    try {
-      const { stdout } = await run("systemctl", ["is-active", UPDATE_UNIT]);
-      return ["active", "activating"].includes(stdout.trim());
-    } catch {
-      return false;
-    }
+    return (await unitRunning(this.state.get("unit"))) || (await anyRunning(UPDATE_PREFIX));
   }
 
-  private async log() {
-    const since = this.state.get("started_at");
-    if (!since || process.platform !== "linux") return "";
-    try {
-      const { stdout } = await run("journalctl", [
-        "-u", UPDATE_UNIT, "--since", `@${Math.floor(since / 1000)}`, "-o", "cat", "--no-pager", "-n", "300",
-      ]);
-      return stdout;
-    } catch {
-      return "";
-    }
+  private log() {
+    return unitLog(this.state.get("unit") ?? UPDATE_PREFIX, this.state.get("started_at"));
   }
 
   async status() {
@@ -181,9 +168,10 @@ export class Updater {
     const reason = this.unsupportedReason();
     if (reason) throw new Error(reason);
     if (await this.running()) throw new Error("An update is already running.");
-    this.state.update({ started_at: Date.now() });
     // A separate transient unit: NovaEtherOS restarts during the update, and
     // anything in its own process group would be killed with it.
-    await run("systemd-run", ["--unit", UPDATE_UNIT, "--collect", "--no-block", "--property=Type=oneshot", NOVA_CLI, "update"]);
+    const startedAt = Date.now();
+    const unit = await startJob(UPDATE_PREFIX, [NOVA_CLI, "update"]);
+    this.state.update({ started_at: startedAt, unit });
   }
 }

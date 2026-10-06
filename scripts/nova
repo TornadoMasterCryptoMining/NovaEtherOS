@@ -227,7 +227,8 @@ case "${1:-help}" in
   logs)
     case "${2:-}" in
       bitcoin) journalctl -u nova-bitcoind -f ;;
-      update) journalctl -u nova-update --no-pager -n 200 ;;
+      update) journalctl -u 'nova-update*' --no-pager -n 200 ;;
+      storage) journalctl -u 'nova-storage*' --no-pager -n 200 ;;
       *) journalctl -u novaetheros -f ;;
     esac
     ;;
@@ -268,7 +269,8 @@ Usage: nova <command>
   update [--force]        Update NovaEtherOS (and Bitcoin Core if a new version is bundled)
   check                   Check whether an update is available
   status                  Show NovaEtherOS and Bitcoin node status
-  logs [bitcoin|update]   Follow NovaEtherOS logs, Bitcoin Core logs, or the last update's output
+  logs [bitcoin|update|storage]
+                          Follow NovaEtherOS logs, Bitcoin Core logs, or show recent update / drive setup output
   restart                 Restart the NovaEtherOS dashboard
   drives                  List drives (find your external SSD here)
   setup-drive /dev/sdX    ERASE an external drive and move the Bitcoin node onto it
