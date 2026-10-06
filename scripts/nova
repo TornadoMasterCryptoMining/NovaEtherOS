@@ -97,6 +97,11 @@ setup_drive() {
     echo "$dev is not a whole drive. Use the drive itself (e.g. /dev/sdb, not /dev/sdb1)." >&2
     exit 1
   fi
+  if [[ "$(lsblk -dbno SIZE "$dev" 2>/dev/null || echo 0)" -eq 0 ]]; then
+    echo "$dev has no disk in it (size 0). On a MacBook this is usually the SD card reader." >&2
+    echo "Run 'nova drives' and pick the line with your SSD's size (about 931G) and 'usb'." >&2
+    exit 1
+  fi
 
   # Never touch the drive the system runs from. Walk down from / to the
   # physical disk(s), which also covers LVM and encrypted installs.
@@ -202,6 +207,9 @@ case "${1:-help}" in
   drives)
     lsblk -e7 -o NAME,SIZE,MODEL,TRAN,FSTYPE,LABEL,MOUNTPOINTS
     echo
+    if lsblk -dbno NAME,SIZE -e7 | awk '$2 == 0 {found = 1} END {exit !found}'; then
+      echo "Drives with size 0B are empty slots (e.g. the MacBook's SD card reader). Don't pick those."
+    fi
     echo "Bitcoin data is in: $BITCOIN_DATA_DIR"
     ;;
   setup-drive)
