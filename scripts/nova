@@ -44,6 +44,25 @@ render_services() {
   systemctl daemon-reload
 }
 
+# Options shared by setup-drive / move-bitcoin, so the dashboard can run them
+# without a terminal:
+#   --yes          skip the "type ERASE" prompt (the dashboard asks instead)
+#   --delete-old   delete the old copy after moving
+#   --keep-old     keep the old copy after moving
+ASSUME_YES=0
+OLD_COPY=ask
+parse_flags() {
+  POSITIONAL=()
+  for arg in "$@"; do
+    case $arg in
+      --yes) ASSUME_YES=1 ;;
+      --delete-old) OLD_COPY=delete ;;
+      --keep-old) OLD_COPY=keep ;;
+      *) POSITIONAL+=("$arg") ;;
+    esac
+  done
+}
+
 # Move the Bitcoin node's data to a new folder and point everything at it.
 move_bitcoin() {
   local new_dir=${1%/}
@@ -75,7 +94,12 @@ move_bitcoin() {
   echo "Done. The Bitcoin node now uses $new_dir."
 
   if [[ -d $old_dir ]] && [[ -n "$(ls -A "$old_dir" 2>/dev/null)" ]]; then
-    read -r -p "Delete the old copy in $old_dir to free up space? [y/N] " answer < /dev/tty
+    local answer=n
+    case $OLD_COPY in
+      delete) answer=y ;;
+      keep) answer=n ;;
+      *) read -r -p "Delete the old copy in $old_dir to free up space? [y/N] " answer < /dev/tty ;;
+    esac
     if [[ $answer =~ ^[Yy] ]]; then
       rm -rf "${old_dir:?}"
       echo "Deleted $old_dir."
@@ -120,10 +144,12 @@ setup_drive() {
   lsblk -o NAME,SIZE,MODEL,TRAN,FSTYPE,LABEL,MOUNTPOINTS "$dev"
   echo
   echo "WARNING: everything on $dev ($(lsblk -dno SIZE "$dev" | xargs) $(lsblk -dno MODEL "$dev" | xargs)) will be ERASED."
-  read -r -p "Type ERASE to continue: " answer < /dev/tty
-  if [[ $answer != "ERASE" ]]; then
-    echo "Cancelled. Nothing was changed."
-    exit 1
+  if [[ $ASSUME_YES != 1 ]]; then
+    read -r -p "Type ERASE to continue: " answer < /dev/tty
+    if [[ $answer != "ERASE" ]]; then
+      echo "Cancelled. Nothing was changed."
+      exit 1
+    fi
   fi
 
   echo "Preparing $dev..."
@@ -214,11 +240,13 @@ case "${1:-help}" in
     ;;
   setup-drive)
     need_root setup-drive
-    setup_drive "${2:-}"
+    parse_flags "${@:2}"
+    setup_drive "${POSITIONAL[0]:-}"
     ;;
   move-bitcoin)
     need_root move-bitcoin
-    move_bitcoin "${2:-}"
+    parse_flags "${@:2}"
+    move_bitcoin "${POSITIONAL[0]:-}"
     ;;
   render-services)
     need_root render-services
@@ -238,7 +266,9 @@ Usage: nova <command>
   restart                 Restart the NovaEtherOS dashboard
   drives                  List drives (find your external SSD here)
   setup-drive /dev/sdX    ERASE an external drive and move the Bitcoin node onto it
+                          (also available in the dashboard: Settings -> Storage)
   move-bitcoin <folder>   Move the Bitcoin node's data to another folder
+                          Options: --delete-old / --keep-old (old copy), --yes (no ERASE prompt)
   version                 Show the installed version
 EOF
     ;;

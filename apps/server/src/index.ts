@@ -7,6 +7,7 @@ import { installApp, listInstalled, listStoreApps, uninstallApp } from "./apps.j
 import { BitcoinNode } from "./bitcoin/node.js";
 import { Updater } from "./updater.js";
 import { SoloPool } from "./pool/pool.js";
+import { Storage } from "./drives.js";
 
 const app = express();
 app.use(express.json());
@@ -25,6 +26,22 @@ app.post("/api/update/check", async (_req, res) => {
 app.post("/api/update", async (_req, res) => {
   try {
     await updater.update();
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(400).json({ ok: false, error: (err as Error).message });
+  }
+});
+
+const storage = new Storage();
+
+app.get("/api/storage", async (_req, res) => {
+  res.json(await storage.status());
+});
+
+app.post("/api/storage/use-for-bitcoin", async (req, res) => {
+  try {
+    const { device, confirm, deleteOld } = req.body ?? {};
+    await storage.useForBitcoin(String(device ?? ""), String(confirm ?? ""), Boolean(deleteOld));
     res.json({ ok: true });
   } catch (err) {
     res.status(400).json({ ok: false, error: (err as Error).message });

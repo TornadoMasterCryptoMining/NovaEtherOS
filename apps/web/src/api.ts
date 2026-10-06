@@ -206,6 +206,34 @@ export function formatBTC(sats: number, digits = 8) {
   return `${(sats / 1e8).toFixed(digits)} BTC`;
 }
 
+export interface Drive {
+  path: string;
+  model: string;
+  size: number;
+  transport: string | null;
+  removable: boolean;
+  system: boolean;
+  empty: boolean;
+  bitcoin: boolean;
+  partitions: {
+    path: string;
+    size: number;
+    fstype: string | null;
+    label: string | null;
+    mountpoints: string[];
+    free: number | null;
+    total: number | null;
+  }[];
+}
+
+export interface StorageStatus {
+  supported: boolean;
+  data_dir: string;
+  drives: Drive[];
+  error: string | null;
+  job: { running: boolean; device: string | null; started_at: number; log: string };
+}
+
 export interface Commit {
   sha: string;
   date: string;
@@ -250,6 +278,9 @@ export const api = {
   pool: () => fetch("/api/pool").then((r) => json<PoolStatus>(r)),
   explorer: () => fetch("/api/bitcoin/explorer").then((r) => json<ExplorerData>(r)),
   bitcoinLogs: () => fetch("/api/bitcoin/logs").then((r) => r.text()),
+  storage: () => fetch("/api/storage").then((r) => json<StorageStatus>(r)),
+  useForBitcoin: (device: string, confirm: string, deleteOld: boolean) =>
+    post("/api/storage/use-for-bitcoin", { device, confirm, deleteOld }).then(json),
   update: () => fetch("/api/update").then((r) => json<UpdateStatus>(r)),
   updateCheck: () => post("/api/update/check").then((r) => json<UpdateStatus>(r)),
   updateStart: () => post("/api/update").then(json),

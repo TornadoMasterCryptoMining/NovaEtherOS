@@ -187,6 +187,33 @@ details summary { cursor: pointer; color: var(--muted); font-size: 0.85rem; }
 .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--muted); margin-right: 4px; }
 .dot.on { background: var(--ok); box-shadow: 0 0 6px var(--ok); }
 
+/* Storage */
+.drive-list { display: flex; flex-direction: column; gap: 12px; }
+.drive {
+  background: rgba(255, 255, 255, 0.05); border: 1px solid var(--glass-border); border-radius: 16px;
+  padding: 14px; display: flex; flex-direction: column; gap: 10px;
+}
+.drive.dim { opacity: 0.5; }
+.drive.is-btc { border-color: rgba(247, 147, 26, 0.6); }
+.drive .btn { align-self: flex-start; }
+.drive-head { display: flex; align-items: center; gap: 12px; }
+.drive-icon { font-size: 1.8rem; }
+.drive-title { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.drive-badges { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.folder {
+  display: grid; grid-template-columns: auto 1fr; gap: 2px 8px; align-items: center;
+  padding: 8px 10px; border-radius: 10px; background: rgba(0, 0, 0, 0.18);
+}
+.folder > .small.muted, .folder > .bar { grid-column: 2; }
+.folder > .bar { margin-top: 6px; }
+.confirm {
+  border: 1px solid rgba(255, 122, 144, 0.5); border-radius: 12px; padding: 12px;
+  display: flex; flex-direction: column; gap: 6px; background: rgba(255, 122, 144, 0.06);
+}
+.warn-text { margin: 0; font-size: 0.9rem; }
+.btn.danger { background: linear-gradient(90deg, #ff5f7e, #ff9a5f); }
+.btn:disabled:not(.ghost) { cursor: not-allowed; }
+
 .update-banner { width: 100%; text-align: left; border-color: rgba(124, 92, 255, 0.6); }
 .ok-text { color: var(--ok); }
 .actions { display: flex; gap: 10px; flex-wrap: wrap; }

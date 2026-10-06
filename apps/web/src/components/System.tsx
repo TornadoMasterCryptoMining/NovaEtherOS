@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { api, type UpdateStatus } from "../api";
 import { usePoll } from "../usePoll";
+import { StoragePanel } from "./StoragePanel";
 
 const fmtDate = (iso: string) => new Date(iso).toLocaleDateString(undefined, { dateStyle: "medium" });
 
@@ -12,6 +13,7 @@ export function System() {
         <p className="muted">NovaEtherOS system settings</p>
       </header>
       <div className="panels">
+        <StoragePanel />
         <SoftwareUpdate />
       </div>
     </div>
