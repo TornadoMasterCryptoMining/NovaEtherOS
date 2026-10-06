@@ -88,8 +88,12 @@ function MinerCard({ m, limits, onChange }: { m: Miner; limits: MinersStatus["li
 
   async function restart() {
     if (!confirm(`Restart ${name}? It stops mining for about 30 seconds.`)) return;
-    await api.minerRestart(m.id).catch(() => undefined);
-    setNote("Restarting…");
+    try {
+      await api.minerRestart(m.id);
+      setNote("Restarting…");
+    } catch (e) {
+      setNote((e as Error).message);
+    }
   }
 
   async function remove() {

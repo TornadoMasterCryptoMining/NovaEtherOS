@@ -152,6 +152,20 @@ export function scanTargets(interfaces = os.networkInterfaces()): string[] {
   return [];
 }
 
+// NovaForge rejects changes (HTTP 403) unless this header is present, as its
+// own web page sends it (cross-site request protection). Stock AxeOS ignores it.
+const WRITE_HEADERS = { "Content-Type": "application/json", "X-Requested-With": "NovaForge" };
+
+async function errorFrom(res: Response) {
+  try {
+    const body = await res.json();
+    if (body?.error) return `The miner refused the change: ${body.error}`;
+  } catch {
+    // no JSON body
+  }
+  return `The miner refused the change (HTTP ${res.status})`;
+}
+
 async function getInfo(ip: string, timeoutMs = REQUEST_TIMEOUT_MS): Promise<Info | null> {
   try {
     const res = await fetch(`http://${ip}/api/system/info`, { signal: AbortSignal.timeout(timeoutMs) });
@@ -272,11 +286,11 @@ export class Miners {
     }
     const res = await fetch(`http://${m.ip}/api/system`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
+      headers: WRITE_HEADERS,
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
-    if (!res.ok) throw new Error(`The miner refused the change (HTTP ${res.status})`);
+    if (!res.ok) throw new Error(await errorFrom(res));
     let restartRequired = false;
     try {
       restartRequired = Boolean((await res.json())?.restartRequired);
@@ -290,16 +304,18 @@ export class Miners {
 
   async restart(id: string) {
     const m = this.find(id);
+    let res: Response;
     try {
-      await fetch(`http://${m.ip}/api/system/restart`, {
+      res = await fetch(`http://${m.ip}/api/system/restart`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: WRITE_HEADERS,
         body: "{}",
         signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       });
     } catch {
-      // The miner often drops the connection as it reboots.
+      return; // The miner often drops the connection as it reboots.
     }
+    if (!res.ok) throw new Error((await errorFrom(res)).replace("the change", "the restart"));
   }
 
   snapshot(poolHost: string, poolPort: number) {
