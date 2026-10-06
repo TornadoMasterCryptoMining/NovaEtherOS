@@ -91,6 +91,8 @@ export function Bitcoin() {
                 {formatGB(scan.disk_free)} free of {formatGB(scan.disk_total)}
                 {scan.rotational != null && ` · ${scan.rotational ? "HDD" : "SSD"}`}
               </dd>
+              <dt>Data folder</dt>
+              <dd className="mono">{storage.data_dir}</dd>
               <dt>Bitcoin uses</dt>
               <dd>{formatGB(scan.bitcoin_used, 1)}</dd>
               {plan && (

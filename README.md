@@ -84,6 +84,17 @@ The **Solo Mining** page shows miners, hashrate, best share, expected time to a 
 | 8333 | P2P (forward on your router for incoming peers; optional) |
 | 28332–28336 | ZMQ (rawblock, rawtx, hashblock, sequence, hashtx) |
 
+### External drive
+
+To keep the blockchain on an external SSD (a 1 TB drive fits a full node):
+
+```bash
+nova drives                          # find the SSD, e.g. /dev/sdb
+sudo nova setup-drive /dev/sdb       # ERASES it, mounts it at boot, moves the node onto it
+```
+
+`setup-drive` refuses to touch the system disk and asks you to type `ERASE` first. The drive is mounted by UUID at `/mnt/nova-bitcoin` with `nofail`, so the machine still boots without it; while it's unplugged the node waits instead of filling the internal disk. To use a drive you've already formatted and mounted yourself: `sudo nova move-bitcoin /path/on/drive/bitcoin`.
+
 Updating NovaEtherOS does not restart Bitcoin Core. Custom `bitcoin.conf` options go in `/var/lib/novaetheros/bitcoin/nova-custom.conf`.
 
 ## Development

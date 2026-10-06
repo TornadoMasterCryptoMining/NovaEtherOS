@@ -2,9 +2,14 @@
 # NovaEtherOS command-line helper. Installed to /usr/local/bin/nova.
 set -euo pipefail
 
-[[ -f /etc/novaetheros.conf ]] && . /etc/novaetheros.conf
+NOVA_CONF=/etc/novaetheros.conf
+[[ -f $NOVA_CONF ]] && . "$NOVA_CONF"
 NOVA_DIR="${NOVA_DIR:-/opt/novaetheros}"
 NOVA_BRANCH="${NOVA_BRANCH:-main}"
+NOVA_PORT="${NOVA_PORT:-80}"
+BITCOIN_DATA_DIR="${BITCOIN_DATA_DIR:-/var/lib/novaetheros/bitcoin}"
+DRIVE_MOUNT=/mnt/nova-bitcoin
+DRIVE_LABEL=NOVA-BITCOIN
 
 need_root() {
   if [[ $EUID -ne 0 ]]; then
@@ -15,6 +20,136 @@ need_root() {
 
 version() {
   git -C "$NOVA_DIR" log -1 --format='%h (%cd) %s' --date=short
+}
+
+# Set KEY="value" in /etc/novaetheros.conf (adding it if missing).
+set_conf() {
+  local key=$1 value=$2
+  touch "$NOVA_CONF"
+  if grep -q "^${key}=" "$NOVA_CONF"; then
+    sed -i "s|^${key}=.*|${key}=\"${value}\"|" "$NOVA_CONF"
+  else
+    echo "${key}=\"${value}\"" >> "$NOVA_CONF"
+  fi
+}
+
+# Write the systemd units from the templates in the repo.
+render_services() {
+  sed "s|__NOVA_DIR__|$NOVA_DIR|g; s|__NOVA_PORT__|$NOVA_PORT|g; s|__BITCOIN_DATA_DIR__|$BITCOIN_DATA_DIR|g" \
+    "$NOVA_DIR/scripts/novaetheros.service" > /etc/systemd/system/novaetheros.service
+  # The Bitcoin node is started and managed by NovaEtherOS (Smart Storage
+  # decides how it runs), so this unit is installed but not enabled on its own.
+  sed "s|__BITCOIN_DATA_DIR__|$BITCOIN_DATA_DIR|g" \
+    "$NOVA_DIR/scripts/nova-bitcoind.service" > /etc/systemd/system/nova-bitcoind.service
+  systemctl daemon-reload
+}
+
+# Move the Bitcoin node's data to a new folder and point everything at it.
+move_bitcoin() {
+  local new_dir=${1%/}
+  local old_dir=${BITCOIN_DATA_DIR%/}
+  if [[ -z $new_dir || $new_dir != /* ]]; then
+    echo "Usage: sudo nova move-bitcoin /absolute/path" >&2
+    exit 1
+  fi
+  if [[ $new_dir == "$old_dir" ]]; then
+    echo "The Bitcoin node already uses $new_dir."
+    return
+  fi
+
+  echo "Stopping NovaEtherOS and Bitcoin Core (Bitcoin Core can take a few minutes to shut down safely)..."
+  systemctl stop novaetheros
+  systemctl stop nova-bitcoind 2>/dev/null || true
+
+  install -d -m 0750 -o bitcoin -g bitcoin "$new_dir"
+  if [[ -d $old_dir ]] && [[ -n "$(ls -A "$old_dir" 2>/dev/null)" ]]; then
+    echo "Copying existing node data from $old_dir to $new_dir ($(du -sh "$old_dir" | cut -f1))..."
+    cp -a "$old_dir/." "$new_dir/"
+  fi
+  chown -R bitcoin:bitcoin "$new_dir"
+
+  set_conf BITCOIN_DATA_DIR "$new_dir"
+  BITCOIN_DATA_DIR=$new_dir
+  render_services
+  systemctl start novaetheros
+  echo "Done. The Bitcoin node now uses $new_dir."
+
+  if [[ -d $old_dir ]] && [[ -n "$(ls -A "$old_dir" 2>/dev/null)" ]]; then
+    read -r -p "Delete the old copy in $old_dir to free up space? [y/N] " answer < /dev/tty
+    if [[ $answer =~ ^[Yy] ]]; then
+      rm -rf "${old_dir:?}"
+      echo "Deleted $old_dir."
+    else
+      echo "Kept $old_dir. You can delete it later with: sudo rm -rf $old_dir"
+    fi
+  fi
+}
+
+# Format an external drive for the Bitcoin node, mount it at boot, and move
+# the node onto it.
+setup_drive() {
+  local dev=${1:-}
+  if [[ -z $dev || ! -b $dev ]]; then
+    echo "Usage: sudo nova setup-drive /dev/sdX   (find the drive with: nova drives)" >&2
+    exit 1
+  fi
+  if [[ "$(lsblk -dno TYPE "$dev")" != "disk" ]]; then
+    echo "$dev is not a whole drive. Use the drive itself (e.g. /dev/sdb, not /dev/sdb1)." >&2
+    exit 1
+  fi
+
+  # Never touch the drive the system runs from. Walk down from / to the
+  # physical disk(s), which also covers LVM and encrypted installs.
+  local root_src
+  root_src=$(findmnt -no SOURCE / | sed 's/\[.*//')
+  if lsblk -lnpso NAME,TYPE "$root_src" 2>/dev/null | awk '$2 == "disk" {print $1}' | grep -qx "$(readlink -f "$dev")"; then
+    echo "$dev is the drive Debian is installed on. Refusing to erase it." >&2
+    exit 1
+  fi
+  if lsblk -lno MOUNTPOINTS "$dev" | grep -qE '^(/|/boot.*|\[SWAP\])$'; then
+    echo "$dev holds a system partition. Refusing to erase it." >&2
+    exit 1
+  fi
+
+  echo
+  lsblk -o NAME,SIZE,MODEL,TRAN,FSTYPE,LABEL,MOUNTPOINTS "$dev"
+  echo
+  echo "WARNING: everything on $dev ($(lsblk -dno SIZE "$dev" | xargs) $(lsblk -dno MODEL "$dev" | xargs)) will be ERASED."
+  read -r -p "Type ERASE to continue: " answer < /dev/tty
+  if [[ $answer != "ERASE" ]]; then
+    echo "Cancelled. Nothing was changed."
+    exit 1
+  fi
+
+  echo "Preparing $dev..."
+  # Unmount anything mounted from this drive.
+  lsblk -lnpo NAME,MOUNTPOINTS "$dev" | awk 'NF > 1 {print $1}' | xargs -r -n1 umount
+  wipefs -a "$dev" >/dev/null
+  printf 'label: gpt\n,,L\n' | sfdisk --quiet --wipe always --wipe-partitions always "$dev"
+  udevadm settle
+  local part
+  part=$(lsblk -lnpo NAME,TYPE "$dev" | awk '$2 == "part" {print $1; exit}')
+  if [[ -z $part ]]; then
+    echo "Could not find the new partition on $dev." >&2
+    exit 1
+  fi
+
+  echo "Formatting $part as ext4 (this can take a minute)..."
+  # -m 0: no space reserved for root; this drive only holds Bitcoin data.
+  mkfs.ext4 -F -q -m 0 -L "$DRIVE_LABEL" "$part"
+  udevadm settle
+  local uuid
+  uuid=$(blkid -s UUID -o value "$part")
+
+  # Mount at boot by UUID. nofail: the Air still boots if the drive is unplugged.
+  mkdir -p "$DRIVE_MOUNT"
+  sed -i "\|[[:space:]]$DRIVE_MOUNT[[:space:]]|d" /etc/fstab
+  echo "UUID=$uuid $DRIVE_MOUNT ext4 defaults,noatime,nofail,x-systemd.device-timeout=30s 0 2" >> /etc/fstab
+  systemctl daemon-reload
+  mount "$DRIVE_MOUNT"
+  echo "Mounted $part at $DRIVE_MOUNT ($(df -h --output=size "$DRIVE_MOUNT" | tail -1 | xargs))."
+
+  move_bitcoin "$DRIVE_MOUNT/bitcoin"
 }
 
 case "${1:-help}" in
@@ -43,6 +178,7 @@ case "${1:-help}" in
     ;;
   status)
     echo "NovaEtherOS $(version)"
+    echo "Bitcoin data: $BITCOIN_DATA_DIR ($(df -h --output=avail "$BITCOIN_DATA_DIR" 2>/dev/null | tail -1 | xargs) free)"
     echo
     systemctl --no-pager status novaetheros nova-bitcoind 2>/dev/null | grep -E '●|Active:' || true
     ;;
@@ -58,6 +194,23 @@ case "${1:-help}" in
     systemctl restart novaetheros
     echo "NovaEtherOS restarted (the Bitcoin node keeps running)."
     ;;
+  drives)
+    lsblk -e7 -o NAME,SIZE,MODEL,TRAN,FSTYPE,LABEL,MOUNTPOINTS
+    echo
+    echo "Bitcoin data is in: $BITCOIN_DATA_DIR"
+    ;;
+  setup-drive)
+    need_root setup-drive
+    setup_drive "${2:-}"
+    ;;
+  move-bitcoin)
+    need_root move-bitcoin
+    move_bitcoin "${2:-}"
+    ;;
+  render-services)
+    need_root render-services
+    render_services
+    ;;
   version)
     version
     ;;
@@ -65,13 +218,15 @@ case "${1:-help}" in
     cat <<'EOF'
 Usage: nova <command>
 
-  update [--force]   Update NovaEtherOS (and Bitcoin Core if a new version is bundled)
-  check              Check whether an update is available
-  status             Show NovaEtherOS and Bitcoin node service status
-  logs [bitcoin|update]
-                     Follow NovaEtherOS logs, Bitcoin Core logs, or the last update's output
-  restart            Restart the NovaEtherOS dashboard
-  version            Show the installed version
+  update [--force]        Update NovaEtherOS (and Bitcoin Core if a new version is bundled)
+  check                   Check whether an update is available
+  status                  Show NovaEtherOS and Bitcoin node status
+  logs [bitcoin|update]   Follow NovaEtherOS logs, Bitcoin Core logs, or the last update's output
+  restart                 Restart the NovaEtherOS dashboard
+  drives                  List drives (find your external SSD here)
+  setup-drive /dev/sdX    ERASE an external drive and move the Bitcoin node onto it
+  move-bitcoin <folder>   Move the Bitcoin node's data to another folder
+  version                 Show the installed version
 EOF
     ;;
 esac

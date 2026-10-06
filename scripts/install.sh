@@ -4,8 +4,16 @@
 set -euo pipefail
 
 # Settings from a previous install (written at the end of this script), so
-# updates keep a custom port or directory.
-[[ -f /etc/novaetheros.conf ]] && . /etc/novaetheros.conf
+# updates keep a custom port or directory. Values given on the command line
+# (e.g. sudo NOVA_PORT=8080 bash install.sh) take precedence.
+if [[ -f /etc/novaetheros.conf ]]; then
+  while IFS='=' read -r key value; do
+    [[ $key =~ ^[A-Z_]+$ ]] || continue
+    value=${value#\"}
+    value=${value%\"}
+    [[ -z ${!key:-} ]] && printf -v "$key" '%s' "$value"
+  done < /etc/novaetheros.conf
+fi
 
 NOVA_REPO="${NOVA_REPO:-https://github.com/TornadoMasterCryptoMining/NovaEtherOS.git}"
 NOVA_BRANCH="${NOVA_BRANCH:-main}"
@@ -80,7 +88,18 @@ fi
 if ! id bitcoin >/dev/null 2>&1; then
   useradd --system --home-dir "$BITCOIN_DATA_DIR" --shell /usr/sbin/nologin bitcoin
 fi
-install -d -m 0750 -o bitcoin -g bitcoin "$BITCOIN_DATA_DIR"
+# On an external drive, only create the folder if the drive is actually mounted,
+# so a missing drive can't silently fill up the internal disk.
+mount_of() {
+  local p=$1
+  while [[ ! -e $p ]]; do p=$(dirname "$p"); done
+  findmnt -no TARGET -T "$p"
+}
+if [[ $BITCOIN_DATA_DIR == /mnt/* || $BITCOIN_DATA_DIR == /media/* ]] && [[ "$(mount_of "$BITCOIN_DATA_DIR")" == "/" ]]; then
+  log "WARNING: the drive for $BITCOIN_DATA_DIR is not mounted; the Bitcoin node will wait for it."
+else
+  install -d -m 0750 -o bitcoin -g bitcoin "$BITCOIN_DATA_DIR"
+fi
 
 if [[ -d "$NOVA_DIR/.git" ]]; then
   log "Updating existing install in $NOVA_DIR..."
@@ -106,13 +125,7 @@ EOF
 install -m 0755 "$NOVA_DIR/scripts/nova" /usr/local/bin/nova
 
 log "Installing systemd services..."
-sed "s|__NOVA_DIR__|$NOVA_DIR|g; s|__NOVA_PORT__|$NOVA_PORT|g; s|__BITCOIN_DATA_DIR__|$BITCOIN_DATA_DIR|g" \
-  "$NOVA_DIR/scripts/novaetheros.service" > /etc/systemd/system/novaetheros.service
-# The Bitcoin node is started and managed by NovaEtherOS (Smart Storage decides
-# how it runs), so this unit is installed but not enabled on its own.
-sed "s|__BITCOIN_DATA_DIR__|$BITCOIN_DATA_DIR|g" \
-  "$NOVA_DIR/scripts/nova-bitcoind.service" > /etc/systemd/system/nova-bitcoind.service
-systemctl daemon-reload
+/usr/local/bin/nova render-services
 systemctl enable --now novaetheros
 systemctl restart novaetheros
 

@@ -48,6 +48,7 @@ export interface BitcoinStatus {
     mempool_tx?: number;
   };
   storage: {
+    data_dir: string;
     scan: {
       disk_total: number;
       disk_free: number;

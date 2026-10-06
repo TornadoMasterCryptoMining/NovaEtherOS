@@ -3,6 +3,8 @@ Description=NovaEtherOS built-in Bitcoin node (Bitcoin Core)
 Documentation=https://github.com/TornadoMasterCryptoMining/NovaEtherOS
 After=network-online.target
 Wants=network-online.target
+# If the data lives on an external drive, only start once it's mounted.
+RequiresMountsFor=__BITCOIN_DATA_DIR__
 
 [Service]
 Type=simple

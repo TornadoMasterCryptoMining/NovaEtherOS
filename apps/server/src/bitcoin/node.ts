@@ -116,10 +116,10 @@ export class BitcoinNode {
   // --- lifecycle -----------------------------------------------------------
 
   async start() {
-    fs.mkdirSync(this.cfg.dataDir, { recursive: true });
     this.installed = process.platform === "linux" && fs.existsSync(this.cfg.bitcoind);
 
     if (!this.installed) {
+      fs.mkdirSync(this.cfg.dataDir, { recursive: true });
       // Dev machines: still show the storage plan so the dashboard can be built.
       this.scan = await scanHardware(this.cfg.dataDir);
       this.plan = planStorage(this.scan, this.settings.snapshot(), this.state.snapshot());
@@ -144,6 +144,21 @@ export class BitcoinNode {
 
   private async doApply(reason: string, forceRestart: boolean) {
     if (this.storageTimer) clearTimeout(this.storageTimer);
+
+    // The data folder is created by the installer (or `nova setup-drive`). If
+    // it's missing, the external drive is probably unplugged: wait for it
+    // rather than start a fresh node on the internal disk.
+    if (!fs.existsSync(this.cfg.dataDir)) {
+      if (await this.serviceActive()) await this.systemctl("stop");
+      this.applied = null;
+      this.setNode(
+        "waiting_for_storage",
+        `Bitcoin data folder ${this.cfg.dataDir} not found. Is the external drive connected? Checking again every minute.`,
+      );
+      this.storageTimer = setTimeout(() => void this.apply("Bitcoin data drive is back."), 60_000);
+      return;
+    }
+
     const settings = this.settings.snapshot();
     const scan = await scanHardware(this.cfg.dataDir);
     const plan = planStorage(scan, settings, this.state.snapshot());
@@ -348,6 +363,10 @@ export class BitcoinNode {
 
   private async guard() {
     if (!this.applied) return;
+    if (!fs.existsSync(this.cfg.dataDir)) {
+      await this.apply("Bitcoin data drive disconnected.");
+      return;
+    }
     try {
       const scan = await scanHardware(this.cfg.dataDir);
       const settings = this.settings.snapshot();
@@ -398,7 +417,13 @@ export class BitcoinNode {
     return {
       installed: this.installed,
       node: this.node,
-      storage: { scan: this.scan, plan: this.plan, applied: this.applied, restart_needed: this.restartNeeded() },
+      storage: {
+        data_dir: c.dataDir,
+        scan: this.scan,
+        plan: this.plan,
+        applied: this.applied,
+        restart_needed: this.restartNeeded(),
+      },
       profile: this.profile,
       settings: this.settings.snapshot(),
       connection: {
