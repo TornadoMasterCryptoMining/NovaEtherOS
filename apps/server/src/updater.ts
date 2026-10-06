@@ -31,8 +31,25 @@ function parseLog(stdout: string): Commit[] {
 }
 
 async function git(...args: string[]) {
-  const { stdout } = await run("git", ["-C", config.repoRoot, ...args], { timeout: 60_000 });
-  return stdout.trim();
+  try {
+    const { stdout } = await run("git", ["-C", config.repoRoot, ...args], { timeout: 60_000 });
+    return stdout.trim();
+  } catch (err) {
+    // Surface git's own explanation (e.g. "Could not resolve host: github.com").
+    const lines = String((err as { stderr?: string }).stderr ?? "").split("\n").map((l) => l.trim()).filter(Boolean);
+    const reason = lines.find((l) => /^(fatal|error):/i.test(l)) ?? lines[0];
+    throw new Error(reason ? reason.replace(/^(fatal|error):\s*/i, "") : (err as Error).message.split("\n")[0]);
+  }
+}
+
+// True when `ancestor` is already contained in `commit`'s history.
+async function isAncestor(ancestor: string, commit: string) {
+  try {
+    await run("git", ["-C", config.repoRoot, "merge-base", "--is-ancestor", ancestor, commit], { timeout: 30_000 });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export class Updater {
@@ -42,12 +59,27 @@ export class Updater {
     latest: null as Commit | null,
     changes: [] as Commit[],
     check_error: null as string | null,
+    // Result of the last successful check, and the installed commit it was made against.
+    available: false,
+    checked_head: null as string | null,
   });
 
   start() {
-    const due = Date.now() - this.state.get("last_check") > AUTO_CHECK_MS;
-    if (due) void this.check().catch(() => undefined);
+    void this.headSha().then((head) => {
+      // Re-check on startup if it's due, or if the installed version changed
+      // since the last check (e.g. right after an update).
+      const due = Date.now() - this.state.get("last_check") > AUTO_CHECK_MS;
+      if (due || head !== this.state.get("checked_head")) void this.check().catch(() => undefined);
+    });
     setInterval(() => void this.check().catch(() => undefined), AUTO_CHECK_MS);
+  }
+
+  private async headSha() {
+    try {
+      return await git("rev-parse", "HEAD");
+    } catch {
+      return null;
+    }
   }
 
   private async current(): Promise<Commit | null> {
@@ -66,24 +98,41 @@ export class Updater {
     return null;
   }
 
+  // Only one check at a time: git can't run two fetches in the same repo at once.
+  private checking: Promise<unknown> | null = null;
+
   async check() {
+    if (!this.checking) {
+      this.checking = this.doCheck().finally(() => (this.checking = null));
+    }
+    await this.checking;
+    return this.status();
+  }
+
+  private async doCheck() {
     try {
       const branch = (await git("rev-parse", "--abbrev-ref", "HEAD")) || "main";
       // Enough history to list what changed since the installed version.
       await git("fetch", "--depth", "30", "origin", branch);
       const latest = parseLog(await git("log", "-1", "--format=%h|%cI|%s", "FETCH_HEAD"))[0] ?? null;
+      const head = await git("rev-parse", "HEAD");
+      const remote = await git("rev-parse", "FETCH_HEAD");
+      // Only offer an update when GitHub has something the installed version
+      // doesn't already contain (never "update" to an older version).
+      const available = head !== remote && !(await isAncestor(remote, head));
       let changes: Commit[] = [];
-      try {
-        changes = parseLog(await git("log", "--format=%h|%cI|%s", "-n", "20", "HEAD..FETCH_HEAD"));
-      } catch {
-        // Installed version isn't in the fetched history; show the latest changes instead.
-        changes = parseLog(await git("log", "--format=%h|%cI|%s", "-n", "5", "FETCH_HEAD"));
+      if (available) {
+        try {
+          changes = parseLog(await git("log", "--format=%h|%cI|%s", "-n", "20", "HEAD..FETCH_HEAD"));
+        } catch {
+          // Installed version isn't in the fetched history; show the latest changes instead.
+          changes = parseLog(await git("log", "--format=%h|%cI|%s", "-n", "5", "FETCH_HEAD"));
+        }
       }
-      this.state.update({ last_check: Date.now(), latest, changes, check_error: null });
+      this.state.update({ last_check: Date.now(), latest, changes, check_error: null, available, checked_head: head });
     } catch (err) {
-      this.state.update({ last_check: Date.now(), check_error: (err as Error).message.split("\n")[0] });
+      this.state.update({ last_check: Date.now(), check_error: (err as Error).message });
     }
-    return this.status();
   }
 
   private async running() {
@@ -111,12 +160,14 @@ export class Updater {
 
   async status() {
     const current = await this.current();
-    const latest = this.state.get("latest");
+    // A check made against a different installed version no longer applies.
+    const fresh = (await this.headSha()) === this.state.get("checked_head");
+    const available = fresh && this.state.get("available");
     return {
       current,
-      latest,
-      available: Boolean(current && latest && current.sha !== latest.sha),
-      changes: this.state.get("changes"),
+      latest: fresh ? this.state.get("latest") : null,
+      available,
+      changes: available ? this.state.get("changes") : [],
       last_check: this.state.get("last_check"),
       check_error: this.state.get("check_error"),
       running: await this.running(),
