@@ -178,6 +178,11 @@ case "${1:-help}" in
     ;;
   status)
     echo "NovaEtherOS $(version)"
+    ip_addr="$(ip -4 route get 1.1.1.1 2>/dev/null | awk '{for (i = 1; i < NF; i++) if ($i == "src") {print $(i + 1); exit}}')"
+    ip_addr="${ip_addr:-unknown-ip}"
+    port_suffix=""
+    [[ $NOVA_PORT == 80 ]] || port_suffix=":$NOVA_PORT"
+    echo "Dashboard: http://${ip_addr}${port_suffix}   Mining pool: ${ip_addr}:2018"
     echo "Bitcoin data: $BITCOIN_DATA_DIR ($(df -h --output=avail "$BITCOIN_DATA_DIR" 2>/dev/null | tail -1 | xargs) free)"
     echo
     systemctl --no-pager status novaetheros nova-bitcoind 2>/dev/null | grep -E '●|Active:' || true

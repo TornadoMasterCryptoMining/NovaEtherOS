@@ -129,7 +129,10 @@ log "Installing systemd services..."
 systemctl enable --now novaetheros
 systemctl restart novaetheros
 
-IP="$(hostname -I | awk '{print $1}')"
+# The address of the interface that actually reaches the network (not
+# Docker's internal bridge, which `hostname -I` may list first).
+IP="$(ip -4 route get 1.1.1.1 2>/dev/null | awk '{for (i = 1; i < NF; i++) if ($i == "src") {print $(i + 1); exit}}')"
+IP="${IP:-$(hostname -I | tr ' ' '\n' | grep -v '^172\.1[7-9]\.' | head -1)}"
 log "Installed version: $(git -C "$NOVA_DIR" log -1 --format='%h %s')"
 log "Update any time from the dashboard, or with: sudo nova update"
 log "Done! Open http://${IP}$( [[ $NOVA_PORT == 80 ]] || echo ":$NOVA_PORT" ) from any device on your network."
