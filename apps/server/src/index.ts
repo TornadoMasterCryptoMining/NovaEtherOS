@@ -9,6 +9,7 @@ import { Updater } from "./updater.js";
 import { SoloPool } from "./pool/pool.js";
 import { Storage } from "./drives.js";
 import { Miners } from "./miners/miners.js";
+import { AIWorkstation } from "./ai/workstation.js";
 
 const app = express();
 app.use(express.json());
@@ -87,6 +88,50 @@ app.post("/api/miners", handle(async (req) => ({ ok: true, id: await miners.add(
 app.delete("/api/miners/:id", handle((req) => miners.remove(String(req.params.id))));
 app.post("/api/miners/:id/settings", handle((req) => miners.applySettings(String(req.params.id), req.body ?? {})));
 app.post("/api/miners/:id/restart", handle((req) => miners.restart(String(req.params.id))));
+
+const ai = new AIWorkstation({
+  dir: config.ai.dir,
+  workspace: config.ai.workspace,
+  agentUser: config.ai.agentUser,
+  protect: [config.dataDir, config.bitcoin.dataDir, "/etc/novaetheros.conf"],
+  novaStatus: () => {
+    const p = pool.snapshot();
+    return {
+      bitcoin_node: bitcoin.snapshot().node,
+      solo_pool: { hashrate: p.hashrate, workers: p.workers.length, connected: p.workers.filter((w) => w.connected).length },
+      miners: miners.snapshot(bitcoin.lanHost, config.pool.port).miners.map((m) => ({
+        name: m.stats?.nickname || m.stats?.hostname || m.ip,
+        ip: m.ip,
+        online: m.online,
+        hashrate_ghs: m.stats ? Math.round(m.stats.hashrate / 1e9) : null,
+        temp_c: m.stats?.temp ?? null,
+        power_w: m.stats?.power ?? null,
+        pool: m.stats ? `${m.stats.pool.url}:${m.stats.pool.port}` : null,
+      })),
+    };
+  },
+});
+ai.start();
+
+app.get("/api/ai", handle(() => ai.status()));
+app.post("/api/ai/settings", handle((req) => ai.saveSettings(req.body ?? {})));
+app.post("/api/ai/install", handle(() => ai.install()));
+app.post("/api/ai/models/pull", handle((req) => ai.pull(String(req.body?.name ?? ""))));
+app.post("/api/ai/models/cancel", handle((req) => ai.cancelPull(String(req.body?.name ?? ""))));
+app.post("/api/ai/models/remove", handle((req) => ai.removeModel(String(req.body?.name ?? ""))));
+app.get("/api/ai/chats", handle(() => ai.list()));
+app.post("/api/ai/chats", handle((req) => ai.create(req.body?.model, req.body?.mode)));
+app.get("/api/ai/chats/:id", handle((req) => ai.view(String(req.params.id))));
+app.delete("/api/ai/chats/:id", handle((req) => ai.remove(String(req.params.id))));
+app.post("/api/ai/chats/:id/messages", handle((req) =>
+  ai.send(String(req.params.id), String(req.body?.content ?? ""), req.body?.model, req.body?.mode)));
+app.post("/api/ai/chats/:id/stop", handle((req) => ai.stop(String(req.params.id))));
+app.post("/api/ai/chats/:id/approve", handle((req) => ai.approve(String(req.params.id), Boolean(req.body?.approve))));
+app.get("/api/ai/workspace", handle((req) => ({
+  path: ai.workspace.relative(ai.workspace.resolve(String(req.query.path ?? "."))),
+  entries: ai.workspace.entries(String(req.query.path ?? ".")),
+})));
+app.get("/api/ai/workspace/file", handle((req) => ({ content: ai.workspace.readText(String(req.query.path ?? ""), 1_000_000) })));
 
 app.get("/api/bitcoin", (_req, res) => {
   res.json(bitcoin.snapshot());

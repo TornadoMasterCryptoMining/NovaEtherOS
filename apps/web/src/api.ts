@@ -321,6 +321,61 @@ export interface UpdateStatus {
   unsupported: string | null;
 }
 
+export interface AISettings {
+  ollama_url: string | null;
+  default_model: string | null;
+  num_ctx: number;
+  auto_approve: boolean;
+  instructions: string;
+}
+
+export interface AIStatus {
+  engine: { url: string; local: boolean; installed: boolean | null; reachable: boolean; version: string | null; can_install: boolean };
+  install_job: { running: boolean; started_at: number; log: string };
+  hardware: { ram: number; free_ram: number; cpus: number; arch: string };
+  models: { name: string; size: number; modified_at: string; parameter_size: string | null; quantization: string | null; loaded: boolean }[];
+  catalog: { name: string; label: string; size: number; tools: boolean; note: string; installed: boolean; fits: boolean | null }[];
+  pulls: Record<string, { status: string; total: number; completed: number; error: string | null }>;
+  settings: AISettings;
+  workspace: string;
+  sandboxed: boolean;
+}
+
+export interface AIMessage {
+  role: "user" | "assistant" | "tool";
+  content: string;
+  thinking?: string;
+  tool_calls?: { function: { name: string; arguments: Record<string, unknown> } }[];
+  tool_name?: string;
+  args?: Record<string, unknown>;
+  note?: boolean;
+  error?: boolean;
+  stats?: { tokens: number; seconds: number };
+  at: number;
+}
+
+export interface AIChatSummary {
+  id: string;
+  title: string;
+  model: string;
+  mode: "agent" | "chat";
+  updated_at: number;
+  running: boolean;
+}
+
+export interface AIChat extends AIChatSummary {
+  created_at: number;
+  messages: AIMessage[];
+  status: string | null;
+  live: { content: string; thinking: string } | null;
+  pending: { name: string; args: Record<string, unknown> } | null;
+}
+
+export interface WorkspaceListing {
+  path: string;
+  entries: { name: string; dir: boolean; size: number; mtime: number }[];
+}
+
 const post = (url: string, body?: unknown) =>
   fetch(url, {
     method: "POST",
@@ -359,6 +414,23 @@ export const api = {
   update: () => fetch("/api/update").then((r) => json<UpdateStatus>(r)),
   updateCheck: () => post("/api/update/check").then((r) => json<UpdateStatus>(r)),
   updateStart: () => post("/api/update").then(json),
+  ai: () => fetch("/api/ai").then((r) => json<AIStatus>(r)),
+  aiSettings: (s: Partial<AISettings>) => post("/api/ai/settings", s).then((r) => json<AISettings>(r)),
+  aiInstall: () => post("/api/ai/install").then(json),
+  aiPull: (name: string) => post("/api/ai/models/pull", { name }).then(json),
+  aiCancelPull: (name: string) => post("/api/ai/models/cancel", { name }).then(json),
+  aiRemoveModel: (name: string) => post("/api/ai/models/remove", { name }).then(json),
+  aiChats: () => fetch("/api/ai/chats").then((r) => json<AIChatSummary[]>(r)),
+  aiNewChat: (model?: string, mode?: string) => post("/api/ai/chats", { model, mode }).then((r) => json<AIChat>(r)),
+  aiChat: (id: string) => fetch(`/api/ai/chats/${id}`).then((r) => json<AIChat>(r)),
+  aiDeleteChat: (id: string) => fetch(`/api/ai/chats/${id}`, { method: "DELETE" }).then(json),
+  aiSend: (id: string, content: string, model: string, mode: string) =>
+    post(`/api/ai/chats/${id}/messages`, { content, model, mode }).then((r) => json<AIChat>(r)),
+  aiStop: (id: string) => post(`/api/ai/chats/${id}/stop`).then(json),
+  aiApprove: (id: string, approve: boolean) => post(`/api/ai/chats/${id}/approve`, { approve }).then(json),
+  aiWorkspace: (p: string) => fetch(`/api/ai/workspace?path=${encodeURIComponent(p)}`).then((r) => json<WorkspaceListing>(r)),
+  aiWorkspaceFile: (p: string) =>
+    fetch(`/api/ai/workspace/file?path=${encodeURIComponent(p)}`).then((r) => json<{ content: string }>(r)),
 };
 
 export function formatGB(bytes: number, digits = 0) {

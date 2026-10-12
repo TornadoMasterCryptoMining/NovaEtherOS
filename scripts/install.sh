@@ -101,6 +101,12 @@ else
   install -d -m 0750 -o bitcoin -g bitcoin "$BITCOIN_DATA_DIR"
 fi
 
+# Nova AI's agent runs its commands as this unprivileged user, in its own workspace.
+if ! id nova-agent >/dev/null 2>&1; then
+  useradd --system --create-home --home-dir /var/lib/nova-agent --shell /bin/bash nova-agent
+fi
+install -d -m 0750 -o nova-agent -g nova-agent /var/lib/nova-agent /var/lib/nova-agent/workspace
+
 if [[ -d "$NOVA_DIR/.git" ]]; then
   log "Updating existing install in $NOVA_DIR..."
   git -C "$NOVA_DIR" fetch --depth 1 origin "$NOVA_BRANCH"
@@ -121,6 +127,7 @@ NOVA_BRANCH="$NOVA_BRANCH"
 NOVA_DIR="$NOVA_DIR"
 NOVA_PORT="$NOVA_PORT"
 BITCOIN_DATA_DIR="$BITCOIN_DATA_DIR"
+AI_MODELS_DIR="${AI_MODELS_DIR:-}"
 EOF
 install -m 0755 "$NOVA_DIR/scripts/nova" /usr/local/bin/nova
 

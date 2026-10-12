@@ -189,6 +189,50 @@ setup_drive() {
   move_bitcoin "$DRIVE_MOUNT/bitcoin"
 }
 
+# Install Ollama (the AI engine behind Nova AI) natively, plus the tools the
+# coding agent uses. Models go on the external drive when there is one: they're
+# several GB each.
+ai_install() {
+  echo "Installing developer tools for the AI agent..."
+  apt-get update -y
+  DEBIAN_FRONTEND=noninteractive apt-get install -y zstd git python3 python3-venv python3-pip build-essential ripgrep
+
+  if ! command -v ollama >/dev/null; then
+    echo "Installing Ollama from ollama.com..."
+    curl -fsSL https://ollama.com/install.sh | sh
+  else
+    echo "Ollama is already installed: $(ollama --version 2>/dev/null | tail -1)"
+  fi
+
+  local models_dir=${AI_MODELS_DIR:-}
+  if [[ -z $models_dir ]] && mountpoint -q "$DRIVE_MOUNT"; then
+    models_dir=$DRIVE_MOUNT/ollama-models
+  fi
+  if [[ -n $models_dir ]]; then
+    install -d -o ollama -g ollama -m 0755 "$models_dir"
+    mkdir -p /etc/systemd/system/ollama.service.d
+    cat > /etc/systemd/system/ollama.service.d/novaetheros.conf <<EOF
+[Unit]
+RequiresMountsFor=$models_dir
+
+[Service]
+Environment=OLLAMA_MODELS=$models_dir
+EOF
+    set_conf AI_MODELS_DIR "$models_dir"
+    echo "AI models will be stored in $models_dir"
+  fi
+  systemctl daemon-reload
+  systemctl enable ollama
+  systemctl restart ollama
+  sleep 2
+  if curl -fsS http://127.0.0.1:11434/api/version >/dev/null; then
+    echo "Done. The AI engine is running. Download a model in the dashboard: Nova AI -> Models."
+  else
+    echo "Ollama was installed but isn't answering yet. Check: journalctl -u ollama -n 50" >&2
+    exit 1
+  fi
+}
+
 case "${1:-help}" in
   update)
     need_root update
@@ -229,6 +273,7 @@ case "${1:-help}" in
       bitcoin) journalctl -u nova-bitcoind -f ;;
       update) journalctl -u 'nova-update*' --no-pager -n 200 ;;
       storage) journalctl -u 'nova-storage*' --no-pager -n 200 ;;
+      ai) journalctl -u ollama -u 'nova-ai*' -f ;;
       *) journalctl -u novaetheros -f ;;
     esac
     ;;
@@ -255,6 +300,10 @@ case "${1:-help}" in
     parse_flags "${@:2}"
     move_bitcoin "${POSITIONAL[0]:-}"
     ;;
+  ai-install)
+    need_root ai-install
+    ai_install
+    ;;
   render-services)
     need_root render-services
     render_services
@@ -269,7 +318,7 @@ Usage: nova <command>
   update [--force]        Update NovaEtherOS (and Bitcoin Core if a new version is bundled)
   check                   Check whether an update is available
   status                  Show NovaEtherOS and Bitcoin node status
-  logs [bitcoin|update|storage]
+  logs [bitcoin|update|storage|ai]
                           Follow NovaEtherOS logs, Bitcoin Core logs, or show recent update / drive setup output
   restart                 Restart the NovaEtherOS dashboard
   drives                  List drives (find your external SSD here)
@@ -277,6 +326,7 @@ Usage: nova <command>
                           (also available in the dashboard: Settings -> Storage)
   move-bitcoin <folder>   Move the Bitcoin node's data to another folder
                           Options: --delete-old / --keep-old (old copy), --yes (no ERASE prompt)
+  ai-install              Install the AI engine (Ollama) for Nova AI (also a button in the dashboard)
   version                 Show the installed version
 EOF
     ;;

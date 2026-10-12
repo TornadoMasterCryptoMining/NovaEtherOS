@@ -6,6 +6,7 @@ import { Blocks } from "./components/Blocks";
 import { Mining } from "./components/Mining";
 import { Miners } from "./components/Miners";
 import { System } from "./components/System";
+import { NovaAI } from "./components/NovaAI";
 import { Dock, type View } from "./components/Dock";
 
 export default function App() {
@@ -25,6 +26,7 @@ export default function App() {
         {view === "miners" && <Miners />}
         {view === "mining" && <Mining />}
         {view === "blocks" && <Blocks />}
+        {view === "ai" && <NovaAI />}
         {view === "store" && <AppStore />}
         {view === "system" && <System />}
       </main>

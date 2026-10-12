@@ -1,4 +1,4 @@
-export type View = "home" | "bitcoin" | "miners" | "mining" | "blocks" | "store" | "system";
+export type View = "home" | "bitcoin" | "miners" | "mining" | "blocks" | "ai" | "store" | "system";
 
 const items: { id: View; label: string; icon: string }[] = [
   { id: "home", label: "Home", icon: "🏠" },
@@ -6,6 +6,7 @@ const items: { id: View; label: string; icon: string }[] = [
   { id: "miners", label: "Miners", icon: "📟" },
   { id: "mining", label: "Solo Mining", icon: "⛏️" },
   { id: "blocks", label: "Blocks & Mempool", icon: "🧊" },
+  { id: "ai", label: "Nova AI", icon: "🤖" },
   { id: "store", label: "App Store", icon: "🛍️" },
   { id: "system", label: "Settings", icon: "⚙️" },
 ];

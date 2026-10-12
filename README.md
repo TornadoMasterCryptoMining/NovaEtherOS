@@ -7,6 +7,7 @@ A self-hosted home cloud dashboard, inspired by UmbrelOS. Runs on a regular Debi
 - **Built-in Bitcoin node** — Bitcoin Core runs natively (no Docker) with Smart Storage auto-pruning, hardware auto-tuning and a mining check
 - **Built-in solo mining pool** — point your Bitaxe / NerdMiner / Antminer at your own node; rewards go straight to your address
 - **Blocks & Mempool** — live blocks, mempool and fee estimates from your own node
+- **Nova AI** — your own coding agent on local models (Ollama, native, no Docker): it writes files, runs commands and tests in a sandboxed workspace, with your approval
 - **One-click updates** — from the dashboard, or `sudo nova update`
 - **Dashboard** — live CPU, memory, storage and battery widgets
 - **App Store** — install/uninstall self-hosted apps (Nextcloud, Jellyfin, Pi-hole, Uptime Kuma) as Docker containers
@@ -80,6 +81,18 @@ The **Miners** page finds Bitaxe-family miners on your network by itself (any fi
 
 For each miner it shows hashrate (now and 1 h), chip and regulator temperature, power and efficiency (J/TH), fan, shares, best difficulty, uptime, and which pool it's on (with a badge when it's mining to this NovaEtherOS). **Tune** changes clock, core voltage, fan (auto with a temperature target, or fixed) within the same limits as the miner's own settings page; clock/voltage changes restart the miner. Pool settings are left to you, on the miner itself.
 
+## Nova AI
+
+An AI agent workstation built into the dashboard (🤖 in the dock), running on your own hardware with [Ollama](https://ollama.com).
+
+1. **Nova AI → Models → Install AI engine** (or `sudo nova ai-install`). Installs Ollama natively as a systemd service, listening only on `127.0.0.1`, plus git, Python and build tools for the agent. If the external drive is set up, models are stored on it.
+2. Download a coding model. The list marks which ones fit in this machine's RAM next to the Bitcoin node; on an 8 GB machine, `qwen2.5-coder:3b` is the sweet spot.
+3. Chat in **Agent** mode: Nova lists, reads, searches, writes and edits files in its workspace, runs commands (installs, builds, tests) and fixes its own errors. **Chat** mode is plain conversation.
+
+**Safety.** Every command waits for your approval unless you turn that off. Commands run as the unprivileged `nova-agent` user in a locked-down systemd unit: they can only write to `/var/lib/nova-agent`, can't read NovaEtherOS's data or the Bitcoin data, and can't connect to anything on this machine (dashboard, RPC, pool). They do have internet access.
+
+**Bigger models.** A MacBook Air can only run small models. To use large ones (e.g. `qwen3-coder:30b`), install Ollama on a PC with a graphics card, start it with `OLLAMA_HOST=0.0.0.0`, and enter its address under **Models → Use a more powerful computer**. The agent's tools still run on NovaEtherOS.
+
 ## Ports
 
 | Port | Use |
@@ -89,6 +102,7 @@ For each miner it shows hashrate (now and 1 h), chip and regulator temperature, 
 | 8332 | RPC (LAN and Tailscale only) |
 | 8333 | P2P (forward on your router for incoming peers; optional) |
 | 28332–28336 | ZMQ (rawblock, rawtx, hashblock, sequence, hashtx) |
+| 11434 | Ollama AI engine (this machine only) |
 
 ### External drive
 

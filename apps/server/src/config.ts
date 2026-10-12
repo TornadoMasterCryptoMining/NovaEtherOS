@@ -18,6 +18,20 @@ export const config = {
     dataDir: path.join(dataDir, "pool"),
   },
 
+  // Nova AI workstation (Ollama runs natively as its own systemd service)
+  ai: {
+    dir: path.join(dataDir, "ai"),
+    agentUser: "nova-agent",
+    // The agent's files. On the real machine they belong to the nova-agent user,
+    // outside NovaEtherOS's own data so its commands can't touch that.
+    workspace: path.resolve(
+      process.env.AI_WORKSPACE ??
+        (process.platform === "linux" && process.getuid?.() === 0
+          ? "/var/lib/nova-agent/workspace"
+          : path.join(dataDir, "ai", "workspace")),
+    ),
+  },
+
   // Built-in Bitcoin node (Bitcoin Core runs natively as a systemd service)
   bitcoin: {
     bitcoind: process.env.BITCOIND_BIN ?? "/usr/local/bin/bitcoind",
