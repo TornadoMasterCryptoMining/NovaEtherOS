@@ -130,8 +130,16 @@ export class AIWorkstation {
     void this.workspace.ensure().catch((err) => console.error("[ai] workspace:", err));
   }
 
-  private get url() {
+  get url() {
     return this.settings.get("ollama_url") || LOCAL_URL;
+  }
+
+  get defaultModel() {
+    return this.settings.get("default_model");
+  }
+
+  get contextSize() {
+    return this.settings.get("num_ctx");
   }
 
   private get local() {

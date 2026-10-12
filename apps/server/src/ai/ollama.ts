@@ -122,6 +122,37 @@ export class Ollama {
     }
   }
 
+  // One-shot, non-streamed chat (for the text API). `json` makes the model answer in JSON.
+  async complete(opts: {
+    model: string;
+    messages: ChatMessage[];
+    options?: Record<string, unknown>;
+    json?: boolean;
+    signal?: AbortSignal;
+  }): Promise<{ content: string; tokens: number; seconds: number }> {
+    const res = await this.request("/api/chat", {
+      method: "POST",
+      signal: opts.signal,
+      timeoutMs: 10 * 60_000,
+      body: JSON.stringify({
+        model: opts.model,
+        messages: opts.messages,
+        options: opts.options,
+        format: opts.json ? "json" : undefined,
+        stream: false,
+        keep_alive: "15m",
+      }),
+    });
+    const body = (await res.json()) as { message?: ChatMessage; eval_count?: number; total_duration?: number };
+    const content = (body.message?.content ?? "").replace(/<think>[\s\S]*?<\/think>/g, "").trim();
+    return { content, tokens: body.eval_count ?? 0, seconds: (body.total_duration ?? 0) / 1e9 };
+  }
+
+  // Raw request to Ollama's OpenAI-compatible API (/v1/...), for proxying.
+  raw(p: string, init: RequestInit) {
+    return fetch(this.url(p), init);
+  }
+
   // Streamed chat. `onDelta` gets the text and thinking as they arrive; the
   // returned message is the complete reply, including any tool calls.
   async chat(opts: {

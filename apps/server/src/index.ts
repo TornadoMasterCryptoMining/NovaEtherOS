@@ -10,9 +10,10 @@ import { SoloPool } from "./pool/pool.js";
 import { Storage } from "./drives.js";
 import { Miners } from "./miners/miners.js";
 import { AIWorkstation } from "./ai/workstation.js";
+import { TextAPI } from "./ai/text-api.js";
 
 const app = express();
-app.use(express.json());
+app.use(express.json({ limit: "2mb" }));
 
 const updater = new Updater();
 updater.start();
@@ -132,6 +133,16 @@ app.get("/api/ai/workspace", handle((req) => ({
   entries: ai.workspace.entries(String(req.query.path ?? ".")),
 })));
 app.get("/api/ai/workspace/file", handle((req) => ({ content: ai.workspace.readText(String(req.query.path ?? ""), 1_000_000) })));
+
+// Public text API (API-key protected) and its management from the dashboard.
+const textApi = new TextAPI(config.ai.dir, ai);
+textApi.routes(app);
+app.get("/api/ai/api", handle(() => textApi.snapshot()));
+app.post("/api/ai/api/keys", handle((req) => textApi.createKey(String(req.body?.name ?? ""))));
+app.delete("/api/ai/api/keys/:id", handle((req) => textApi.revokeKey(String(req.params.id))));
+app.post("/api/ai/api/endpoints", handle((req) => textApi.saveEndpoint(req.body ?? {}, req.body?.original || undefined)));
+app.delete("/api/ai/api/endpoints/:slug", handle((req) => textApi.deleteEndpoint(String(req.params.slug))));
+app.post("/api/ai/api/endpoints/:slug/test", handle((req) => textApi.run(String(req.params.slug), req.body ?? {})));
 
 app.get("/api/bitcoin", (_req, res) => {
   res.json(bitcoin.snapshot());

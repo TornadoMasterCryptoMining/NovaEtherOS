@@ -38,6 +38,7 @@ function fakeOllama(script: ((body: any) => object)[]) {
         const body = JSON.parse(raw);
         requests.push(body);
         const reply = script[Math.min(requests.length - 1, script.length - 1)](body);
+        if (body.stream === false) return res.end(JSON.stringify({ ...reply, done: true, eval_count: 5, total_duration: 1e9 }));
         res.write(JSON.stringify({ message: { role: "assistant", content: "" }, done: false }) + "\n");
         res.end(JSON.stringify({ ...reply, done: true, eval_count: 5, eval_duration: 1e9 }) + "\n");
         return;
@@ -108,6 +109,62 @@ test("commands wait for approval and can be declined", async () => {
     assert.match(chat.messages[2].content, /declined/);
     assert.equal(chat.messages.at(-1)?.content, "OK, I won't.");
   } finally {
+    ollama.close();
+  }
+});
+
+test("text API: keys, endpoints and the OpenAI passthrough", async () => {
+  const { default: express } = await import("express");
+  const { TextAPI, render } = await import("./text-api.js");
+  assert.equal(render("Into {{language}}: {{text}}", { language: "Spanish", text: "hi" }), "Into Spanish: hi");
+  assert.throws(() => render("{{text}}", {}), /Missing "text"/);
+
+  const seen: any[] = [];
+  const ollama = await fakeOllama([
+    (body) => {
+      seen.push(body);
+      return { message: { role: "assistant", content: '{"sentiment":"positive"}' } };
+    },
+  ]);
+  const dir = tmp();
+  const ai = new AIWorkstation({ dir, workspace: path.join(dir, "ws"), agentUser: "nobody", protect: [], novaStatus: () => ({}) });
+  ai.start();
+  ai.saveSettings({ ollama_url: ollama.url, default_model: "test-model" });
+  const textApi = new TextAPI(dir, ai);
+  const app = express();
+  app.use(express.json());
+  textApi.routes(app);
+  const server = app.listen(0, "127.0.0.1");
+  await new Promise((r) => server.once("listening", r));
+  const base = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
+  try {
+    textApi.saveEndpoint({ name: "Sentiment", template: "{{text}}", json: true, instructions: "Classify." });
+    const { key } = textApi.createKey("test");
+    assert.ok(!JSON.stringify(textApi.snapshot()).includes(key), "key itself is never stored or listed");
+
+    const call = (p: string, body: object, auth = key) =>
+      fetch(base + p, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${auth}` }, body: JSON.stringify(body) });
+
+    assert.equal((await call("/api/v1/text/sentiment", { text: "great" }, "nova_wrong")).status, 401);
+    assert.equal((await call("/api/v1/text/sentiment", {})).status, 400);
+    assert.equal((await call("/api/v1/text/nope", { text: "x" })).status, 404);
+
+    const res = await call("/api/v1/text/sentiment", { text: "I love it" });
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.deepEqual(body.data, { sentiment: "positive" });
+    assert.equal(seen[0].format, "json");
+    assert.equal(seen[0].model, "test-model");
+    assert.deepEqual(seen[0].messages.map((m: any) => m.role), ["system", "user"]);
+    assert.equal(textApi.snapshot().keys[0].calls, 1 + 2); // 401 doesn't count; the other calls do
+
+    // OpenAI-compatible routes need the key, then go straight to Ollama (the fake answers 404 here).
+    assert.equal((await fetch(`${base}/v1/models`)).status, 401);
+    const proxied = await fetch(`${base}/v1/models`, { headers: { "X-API-Key": key } });
+    assert.equal(proxied.status, 404);
+  } finally {
+    server.closeAllConnections();
+    server.close();
     ollama.close();
   }
 });

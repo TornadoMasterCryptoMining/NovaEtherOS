@@ -371,6 +371,38 @@ export interface AIChat extends AIChatSummary {
   pending: { name: string; args: Record<string, unknown> } | null;
 }
 
+export interface TextEndpoint {
+  slug: string;
+  name: string;
+  description: string;
+  model: string | null;
+  instructions: string;
+  template: string;
+  json: boolean;
+  temperature: number;
+  created_at: number;
+  calls: number;
+  last_used: number | null;
+  variables: string[];
+}
+
+export type EndpointDraft = Partial<Omit<TextEndpoint, "variables">>;
+
+export interface TextApiStatus {
+  keys: { id: string; name: string; hint: string; created_at: number; last_used: number | null; calls: number }[];
+  endpoints: TextEndpoint[];
+  starters: EndpointDraft[];
+}
+
+export interface TextResult {
+  endpoint: string;
+  model: string;
+  output: string;
+  data?: unknown;
+  tokens: number;
+  seconds: number;
+}
+
 export interface WorkspaceListing {
   path: string;
   entries: { name: string; dir: boolean; size: number; mtime: number }[];
@@ -428,6 +460,14 @@ export const api = {
     post(`/api/ai/chats/${id}/messages`, { content, model, mode }).then((r) => json<AIChat>(r)),
   aiStop: (id: string) => post(`/api/ai/chats/${id}/stop`).then(json),
   aiApprove: (id: string, approve: boolean) => post(`/api/ai/chats/${id}/approve`, { approve }).then(json),
+  textApi: () => fetch("/api/ai/api").then((r) => json<TextApiStatus>(r)),
+  textApiKey: (name: string) => post("/api/ai/api/keys", { name }).then((r) => json<{ id: string; key: string }>(r)),
+  textApiRevoke: (id: string) => fetch(`/api/ai/api/keys/${id}`, { method: "DELETE" }).then(json),
+  textApiSave: (e: EndpointDraft, original?: string) =>
+    post("/api/ai/api/endpoints", { ...e, original }).then((r) => json<TextEndpoint>(r)),
+  textApiDelete: (slug: string) => fetch(`/api/ai/api/endpoints/${slug}`, { method: "DELETE" }).then(json),
+  textApiTest: (slug: string, input: Record<string, string>) =>
+    post(`/api/ai/api/endpoints/${slug}/test`, input).then((r) => json<TextResult>(r)),
   aiWorkspace: (p: string) => fetch(`/api/ai/workspace?path=${encodeURIComponent(p)}`).then((r) => json<WorkspaceListing>(r)),
   aiWorkspaceFile: (p: string) =>
     fetch(`/api/ai/workspace/file?path=${encodeURIComponent(p)}`).then((r) => json<{ content: string }>(r)),

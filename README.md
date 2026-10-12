@@ -93,6 +93,24 @@ An AI agent workstation built into the dashboard (🤖 in the dock), running on 
 
 **Bigger models.** A MacBook Air can only run small models. To use large ones (e.g. `qwen3-coder:30b`), install Ollama on a PC with a graphics card, start it with `OLLAMA_HOST=0.0.0.0`, and enter its address under **Models → Use a more powerful computer**. The agent's tools still run on NovaEtherOS.
 
+### Text API
+
+**Nova AI → API** turns the local models into an API for your own scripts, bots and apps. Create an API key, then:
+
+- **Text endpoints**: one URL per text job. Quick-add Summarize, Translate, Rewrite, Sentiment or Extract keywords, or make your own: give it instructions and a template; anything in `{{double braces}}` comes from the request. Turn on JSON for answers your code can read field by field.
+
+  ```bash
+  curl -X POST http://<machine-ip>/api/v1/text/summarize \
+    -H "Authorization: Bearer nova_..." -H "Content-Type: application/json" \
+    -d '{"text": "Long text here"}'
+  # -> {"output": "...", "model": "...", "tokens": 120, "seconds": 4.2}
+  ```
+
+  `GET /api/v1/text` lists your endpoints and the fields each one needs.
+- **OpenAI-compatible**: `http://<machine-ip>/v1` (`/v1/chat/completions`, `/v1/models`, `/v1/embeddings`), so OpenAI SDKs and tools work with `base_url` pointed at NovaEtherOS and your Nova key.
+
+Keys are stored only as hashes, and each one can be revoked on its own. The API is reachable from your home network; don't port-forward it to the internet.
+
 ## Ports
 
 | Port | Use |
