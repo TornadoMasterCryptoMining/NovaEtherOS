@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import type os from "node:os";
 import { describe, test } from "node:test";
-import { isMinerInfo, scanTargets, settingsBody, summarize } from "./miners.js";
+import { isMinerInfo, poolStatus, scanTargets, settingsBody, summarize } from "./miners.js";
 
 // Trimmed from a real NovaForge (Bitaxe Gamma 601) /api/system/info response.
 const nova = {
@@ -64,5 +64,33 @@ describe("miners", () => {
     const hosts16 = scanTargets(iface("10.0.5.20/16")); // too big: only our /24
     assert.equal(hosts16.length, 253);
     assert.equal(hosts16[0], "10.0.5.1");
+  });
+});
+
+describe("poolStatus", () => {
+  const pool = (over: Partial<ReturnType<typeof summarize>["pool"]>) => ({
+    url: "192.168.0.24", port: 2018, user: "bc1q.x", connected: true, using_fallback: false,
+    fallback_url: "public-pool.io", fallback_port: 21496, ...over,
+  });
+
+  test("on our pool as its main pool", () => {
+    const s = poolStatus(pool({}), "192.168.0.24", 2018);
+    assert.equal(s.on_nova_pool, true);
+    assert.equal(s.stranded, false);
+    assert.equal(s.active_url, "192.168.0.24");
+  });
+
+  test("stuck on the backup although ours is the main pool", () => {
+    const s = poolStatus(pool({ using_fallback: true }), "192.168.0.24", 2018);
+    assert.equal(s.on_nova_pool, false, "not mining to us right now");
+    assert.equal(s.stranded, true);
+    assert.equal(s.active_url, "public-pool.io");
+    assert.equal(s.active_port, 21496);
+  });
+
+  test("our pool as the backup, in use", () => {
+    const s = poolStatus(pool({ url: "stratum+tcp://public-pool.io", port: 21496, fallback_url: "192.168.0.24", fallback_port: 2018, using_fallback: true }), "192.168.0.24", 2018);
+    assert.equal(s.on_nova_pool, true);
+    assert.equal(s.stranded, false);
   });
 });

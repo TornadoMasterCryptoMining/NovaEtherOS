@@ -614,3 +614,5 @@ details[open] > summary { margin-bottom: 8px; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+.miner-toolbar .auto-reconnect { margin: 0; flex-basis: 100%; color: var(--text-2); }
+.warn-inline { color: var(--warn); font-weight: 500; }

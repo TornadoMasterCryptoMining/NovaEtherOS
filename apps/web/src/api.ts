@@ -256,13 +256,18 @@ export interface MinersStatus {
     last_seen: number | null;
     error: string | null;
     stats: MinerStats | null;
-    on_nova_pool: boolean;
+    active_pool: { url: string | null; port: number | null } | null;
+    on_nova_pool: boolean; // mining to your pool right now
+    nova_pool_primary: boolean;
     nova_pool_backup: boolean;
+    stranded: boolean; // your pool is its main pool, but it's on its backup
+    reconnect_at: number | null;
   }[];
   totals: { hashrate: number; power: number; online: number };
   scanning: boolean;
   scan_progress: { done: number; total: number };
   last_scan: number | null;
+  auto_reconnect: boolean;
   limits: Record<"frequency" | "coreVoltage" | "manualFanSpeed" | "temptarget", { min: number; max: number }>;
 }
 
@@ -435,6 +440,7 @@ export const api = {
   bitcoinLogs: () => fetch("/api/bitcoin/logs").then((r) => r.text()),
   miners: () => fetch("/api/miners").then((r) => json<MinersStatus>(r)),
   minersScan: () => post("/api/miners/scan").then(json),
+  minersAutoReconnect: (enabled: boolean) => post("/api/miners/auto-reconnect", { enabled }).then(json),
   minerAdd: (ip: string) => post("/api/miners", { ip }).then(json),
   minerRemove: (id: string) => fetch(`/api/miners/${encodeURIComponent(id)}`, { method: "DELETE" }).then(json),
   minerSettings: (id: string, s: MinerSettings) =>

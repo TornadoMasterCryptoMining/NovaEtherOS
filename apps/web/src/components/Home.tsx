@@ -121,6 +121,7 @@ function MiningCard({ onOpen, onPool }: { onOpen: () => void; onPool: () => void
   const { data: m } = usePoll(api.miners, 10_000);
   const { data: p } = usePoll(api.pool, 10_000);
   const onPoolCount = m?.miners.filter((x) => x.on_nova_pool && x.online).length ?? 0;
+  const stranded = m?.miners.filter((x) => x.stranded).length ?? 0;
   return (
     <button className="ov-card" onClick={onOpen}>
       <CardHead icon="pickaxe" title="Mining" tone="accent">
@@ -136,8 +137,9 @@ function MiningCard({ onOpen, onPool }: { onOpen: () => void; onPool: () => void
         <dt>Block odds</dt><dd>{p?.expected_seconds ? `~${formatDuration(p.expected_seconds)}` : "–"}</dd>
       </dl>
       <p className="ov-foot">
-        {onPoolCount ? `${onPoolCount} mining to your own pool` : "No miners on your own pool yet. "}
-        {!onPoolCount && <span className="link" role="link" onClick={(e) => { e.stopPropagation(); onPool(); }}>How to connect</span>}
+        {onPoolCount ? `${onPoolCount} mining to your own pool` : stranded ? "" : "No miners on your own pool yet. "}
+        {stranded > 0 && <span className="warn-inline">{stranded} on backup pool{m?.auto_reconnect ? ", reconnecting" : ""}</span>}
+        {!onPoolCount && !stranded && <span className="link" role="link" onClick={(e) => { e.stopPropagation(); onPool(); }}>How to connect</span>}
       </p>
     </button>
   );

@@ -65,6 +65,11 @@ export function Miners() {
               onKeyDown={(e) => e.key === "Enter" && add()} />
             <button className="btn" onClick={add} disabled={!ip.trim()}>Add</button>
           </div>
+          <label className="check auto-reconnect" title="Miners that fall back to their backup pool (e.g. while NovaEtherOS restarts) don't switch back by themselves. NovaEtherOS restarts them once your pool is up again. Pool settings are never changed.">
+            <input type="checkbox" checked={data.auto_reconnect}
+              onChange={(e) => api.minersAutoReconnect(e.target.checked).then(refresh)} />
+            <span>Bring miners back to your pool automatically</span>
+          </label>
           {msg && <p className="error small">{msg}</p>}
         </div>
       )}
@@ -140,10 +145,21 @@ function MinerCard({ m, limits, onChange }: { m: Miner; limits: MinersStatus["li
             <dd>{s.shares_accepted?.toLocaleString() ?? "–"} accepted · {s.shares_rejected ?? 0} rejected</dd>
             <dt>Pool</dt>
             <dd>
-              {m.on_nova_pool && <span className="pill ok">Your pool</span>}{" "}
-              <span className="mono small">{(s.pool.url ?? "–").replace(/^stratum\+tcp:\/\//, "")}:{s.pool.port}</span>
-              {s.pool.using_fallback && <span className="small muted"> (on backup)</span>}
-              {!m.on_nova_pool && m.nova_pool_backup && <span className="small muted"> · your pool is the backup</span>}
+              {m.on_nova_pool && <span className="pill ok">Your pool</span>}
+              {m.stranded && <span className="pill busy">On backup</span>}{" "}
+              <span className="mono small">
+                {(m.active_pool?.url ?? s.pool.url ?? "–").replace(/^stratum\+tcp:\/\//, "")}:{m.active_pool?.port ?? s.pool.port}
+              </span>
+              {s.pool.using_fallback && !m.stranded && <span className="small muted"> (backup pool)</span>}
+              {!m.on_nova_pool && !m.stranded && m.nova_pool_backup && <span className="small muted"> · your pool is the backup</span>}
+              {m.stranded && (
+                <div className="small muted">
+                  Your pool is its main pool, but it switched to the backup (usually after NovaEtherOS restarted).{" "}
+                  {m.reconnect_at
+                    ? `NovaEtherOS will restart it to reconnect ${m.reconnect_at <= Date.now() + 15_000 ? "shortly" : `at ${new Date(m.reconnect_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`}.`
+                    : "Restart it to reconnect."}
+                </div>
+              )}
             </dd>
             <dt>Uptime</dt>
             <dd>{uptime(s.uptime)} · {s.firmware} {s.version}</dd>

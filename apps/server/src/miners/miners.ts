@@ -10,6 +10,10 @@ const POLL_MS = 10_000;
 const SCAN_EVERY_MS = 30 * 60_000;
 const SCAN_TIMEOUT_MS = 1_500;
 const SCAN_CONCURRENCY = 64;
+// Miners stuck on their backup pool while ours is up get restarted to reconnect:
+// after this long, and at most this often per miner.
+const RECONNECT_AFTER_MS = 90_000;
+const RECONNECT_COOLDOWN_MS = 20 * 60_000;
 const REQUEST_TIMEOUT_MS = 5_000;
 // Don't sweep huge networks: anything bigger than a /22 is limited to our /24.
 const MAX_SCAN_PREFIX = 22;
@@ -40,6 +44,7 @@ interface MinersState {
   miners: KnownMiner[];
   ignored: string[]; // MACs the user removed; discovery won't re-add them
   last_scan: number;
+  auto_reconnect: boolean; // restart miners stuck on their backup pool once ours is back
 }
 
 type Info = Record<string, any>;
@@ -101,6 +106,24 @@ export function summarize(info: Info) {
       fallback_port: info.fallbackStratumPort ?? null,
     },
     locked: Boolean(info.commitActive),
+  };
+}
+
+// Which pool a miner is really mining on, and how that relates to our pool.
+// ESP-Miner/AxeOS firmware falls back to its backup pool when the main one
+// drops (e.g. while NovaEtherOS restarts) and doesn't switch back by itself.
+export function poolStatus(pool: ReturnType<typeof summarize>["pool"], host: string, port: number) {
+  const hostOf = (url: string | null) => String(url ?? "").replace(/^stratum\+tcp:\/\//, "").split(/[:/]/)[0];
+  const ours = (url: string | null, p: number | null) => hostOf(url) === host && Number(p) === port;
+  const primary = ours(pool.url, pool.port);
+  const backup = ours(pool.fallback_url, pool.fallback_port);
+  return {
+    active_url: pool.using_fallback ? pool.fallback_url : pool.url,
+    active_port: pool.using_fallback ? pool.fallback_port : pool.port,
+    on_nova_pool: pool.using_fallback ? backup : primary, // mining to our pool right now
+    nova_pool_primary: primary,
+    nova_pool_backup: backup,
+    stranded: primary && pool.using_fallback, // ours is its main pool, but it's on the backup
   };
 }
 
@@ -183,8 +206,58 @@ export class Miners {
   private scanning: Promise<void> | null = null;
   private scanProgress = { done: 0, total: 0 };
 
+  private pool: (() => { host: string; port: number; ready: boolean }) | null = null;
+  private log: (message: string, level?: "info" | "error") => void = () => undefined;
+  private poolReadySince = 0;
+  private strandedSince = new Map<string, number>();
+  private lastReconnect = new Map<string, number>();
+
   constructor(dataDir: string) {
-    this.state = new JsonStore<MinersState>(path.join(dataDir, "miners.json"), { miners: [], ignored: [], last_scan: 0 });
+    this.state = new JsonStore<MinersState>(path.join(dataDir, "miners.json"), {
+      miners: [], ignored: [], last_scan: 0, auto_reconnect: true,
+    });
+  }
+
+  // Let the miners page know about our own solo pool, so stranded miners can be brought back.
+  connectPool(info: () => { host: string; port: number; ready: boolean }, log: (message: string, level?: "info" | "error") => void) {
+    this.pool = info;
+    this.log = log;
+  }
+
+  setAutoReconnect(enabled: boolean) {
+    this.state.update({ auto_reconnect: enabled });
+  }
+
+  // Restart miners whose main pool is ours but which sit on their backup pool,
+  // once our pool has been up for a while. Pool settings themselves are never touched.
+  private async reconnectStranded(now = Date.now()) {
+    const p = this.pool?.();
+    if (!p?.ready) {
+      this.poolReadySince = 0;
+      return;
+    }
+    if (!this.poolReadySince) this.poolReadySince = now;
+    for (const m of this.state.get("miners")) {
+      const live = this.live.get(m.id);
+      const s = live?.online && live.info ? summarize(live.info) : null;
+      if (!s || !poolStatus(s.pool, p.host, p.port).stranded) {
+        this.strandedSince.delete(m.id);
+        continue;
+      }
+      if (!this.strandedSince.has(m.id)) this.strandedSince.set(m.id, now);
+      if (!this.state.get("auto_reconnect")) continue;
+      const waited = now - Math.max(this.strandedSince.get(m.id)!, this.poolReadySince) >= RECONNECT_AFTER_MS;
+      const cooled = now - (this.lastReconnect.get(m.id) ?? 0) >= RECONNECT_COOLDOWN_MS;
+      if (!waited || !cooled) continue;
+      this.lastReconnect.set(m.id, now);
+      const name = s.nickname || s.hostname || m.ip;
+      try {
+        await this.restart(m.id);
+        this.log(`${name} was stuck on its backup pool while your pool was up; restarted it so it reconnects.`);
+      } catch (err) {
+        this.log(`Couldn't restart ${name} to bring it back to your pool: ${(err as Error).message}`, "error");
+      }
+    }
   }
 
   start() {
@@ -224,6 +297,7 @@ export class Miners {
         }
       }),
     );
+    await this.reconnectStranded();
   }
 
   // Sweep the LAN for miners. Known miners whose IP changed are followed by MAC.
@@ -322,7 +396,7 @@ export class Miners {
     const miners = this.state.get("miners").map((m) => {
       const live = this.live.get(m.id);
       const s = live?.info ? summarize(live.info) : null;
-      const poolHostOf = (url: string | null) => String(url ?? "").replace(/^stratum\+tcp:\/\//, "").split(/[:/]/)[0];
+      const ps = s ? poolStatus(s.pool, poolHost, poolPort) : null;
       return {
         id: m.id,
         ip: m.ip,
@@ -330,9 +404,17 @@ export class Miners {
         last_seen: live?.last_seen || null,
         error: live?.error ?? null,
         stats: s,
-        // Is it pointed at this NovaEtherOS's own solo pool?
-        on_nova_pool: Boolean(s && poolHostOf(s.pool.url) === poolHost && Number(s.pool.port) === poolPort),
-        nova_pool_backup: Boolean(s && poolHostOf(s.pool.fallback_url) === poolHost && Number(s.pool.fallback_port) === poolPort),
+        active_pool: ps ? { url: ps.active_url, port: ps.active_port } : null,
+        on_nova_pool: Boolean(ps?.on_nova_pool && live?.online),
+        nova_pool_primary: Boolean(ps?.nova_pool_primary),
+        nova_pool_backup: Boolean(ps?.nova_pool_backup),
+        stranded: Boolean(ps?.stranded && live?.online),
+        reconnect_at: ps?.stranded && live?.online && this.state.get("auto_reconnect")
+          ? Math.max(
+              (this.strandedSince.get(m.id) ?? Date.now()) + RECONNECT_AFTER_MS,
+              (this.lastReconnect.get(m.id) ?? 0) + RECONNECT_COOLDOWN_MS,
+            )
+          : null,
       };
     });
     const online = miners.filter((m) => m.online && m.stats);
@@ -346,6 +428,7 @@ export class Miners {
       scanning: Boolean(this.scanning),
       scan_progress: this.scanProgress,
       last_scan: this.state.get("last_scan") || null,
+      auto_reconnect: this.state.get("auto_reconnect"),
       limits: LIMITS,
     };
   }

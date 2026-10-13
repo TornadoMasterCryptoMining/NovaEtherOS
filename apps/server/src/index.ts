@@ -68,6 +68,10 @@ app.get("/api/pool", (_req, res) => {
 });
 
 const miners = new Miners(config.dataDir);
+miners.connectPool(
+  () => ({ host: bitcoin.lanHost, port: config.pool.port, ready: pool.snapshot().ready }),
+  (message, level) => bitcoin.logEvent(`Miners: ${message}`, level),
+);
 miners.start();
 
 // Wrap handlers so errors come back as { ok: false, error } with a 400.
@@ -85,6 +89,7 @@ app.get("/api/miners", (_req, res) => {
   res.json(miners.snapshot(bitcoin.lanHost, config.pool.port));
 });
 app.post("/api/miners/scan", handle(() => void miners.scan()));
+app.post("/api/miners/auto-reconnect", handle((req) => miners.setAutoReconnect(Boolean(req.body?.enabled))));
 app.post("/api/miners", handle(async (req) => ({ ok: true, id: await miners.add(String(req.body?.ip ?? "").trim()) })));
 app.delete("/api/miners/:id", handle((req) => miners.remove(String(req.params.id))));
 app.post("/api/miners/:id/settings", handle((req) => miners.applySettings(String(req.params.id), req.body ?? {})));
