@@ -34,6 +34,7 @@ function fakeOllama(script: ((body: any) => object)[]) {
     req.on("data", (d) => (raw += d));
     req.on("end", () => {
       if (req.url === "/api/version") return res.end(JSON.stringify({ version: "0.0.test" }));
+      if (req.url === "/api/tags") return res.end(JSON.stringify({ models: [{ name: "test-model", size: 1 }] }));
       if (req.url === "/api/chat") {
         const body = JSON.parse(raw);
         requests.push(body);
@@ -162,6 +163,11 @@ test("text API: keys, endpoints and the OpenAI passthrough", async () => {
     assert.equal((await fetch(`${base}/v1/models`)).status, 401);
     const proxied = await fetch(`${base}/v1/models`, { headers: { "X-API-Key": key } });
     assert.equal(proxied.status, 404);
+
+    // A wrong model name gets a helpful answer listing the installed models.
+    const wrong = await call("/v1/chat/completions", { model: "qwen2.5-coder:3b.", messages: [{ role: "user", content: "hi" }] });
+    assert.equal(wrong.status, 404);
+    assert.match((await wrong.json()).error.message, /Installed: test-model/);
   } finally {
     server.closeAllConnections();
     server.close();

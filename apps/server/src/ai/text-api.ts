@@ -266,7 +266,14 @@ export class TextAPI {
         let body: string | undefined;
         if (req.method === "POST") {
           const payload = { ...(req.body ?? {}) };
+          payload.model = typeof payload.model === "string" ? payload.model.trim() : payload.model;
           if (!payload.model) payload.model = this.ai.defaultModel;
+          // Say which models exist instead of Ollama's bare "model not found".
+          const installed = await this.ai.ollama.models().then((ms) => ms.map((m) => m.name)).catch(() => null);
+          if (installed && payload.model && !installed.includes(payload.model) && !installed.includes(`${payload.model}:latest`)) {
+            throw new ApiError(404, `Model "${payload.model}" isn't installed on Nova AI. Installed: ${installed.join(", ") || "none"}. ` +
+              `Use one of those exact names, or leave "model" out to use the default (${this.ai.defaultModel ?? "none set"}).`);
+          }
           body = JSON.stringify(payload);
         }
         const up = await this.ai.ollama.raw(req.originalUrl, {
@@ -280,7 +287,8 @@ export class TextAPI {
         if (up.body) Readable.fromWeb(up.body as import("node:stream/web").ReadableStream).pipe(res);
         else res.end();
       } catch (err) {
-        if (!abort.signal.aborted) TextAPI.fail(res, new ApiError(503, `The AI engine isn't reachable: ${(err as Error).message}`));
+        if (abort.signal.aborted) return;
+        TextAPI.fail(res, err instanceof ApiError ? err : new ApiError(503, `The AI engine isn't reachable: ${(err as Error).message}`));
       }
     };
     app.get("/v1/models", proxy);
