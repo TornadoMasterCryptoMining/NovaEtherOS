@@ -110,6 +110,26 @@ export class Ollama {
     return ((await res.json()) as { models?: LoadedModel[] }).models ?? [];
   }
 
+  // What a model can do ("tools", "thinking"...) and its size in billions of parameters.
+  private info = new Map<string, { capabilities: string[]; billions: number | null }>();
+
+  async modelInfo(model: string) {
+    const key = `${this.baseUrl()}|${model}`;
+    const cached = this.info.get(key);
+    if (cached) return cached;
+    try {
+      const res = await this.request("/api/show", { method: "POST", body: JSON.stringify({ model }), timeoutMs: 10_000 });
+      const body = (await res.json()) as { capabilities?: string[]; details?: { parameter_size?: string } };
+      const m = String(body.details?.parameter_size ?? "").match(/([\d.]+)\s*([BM])/i);
+      const billions = m ? Number(m[1]) / (m[2].toUpperCase() === "M" ? 1000 : 1) : null;
+      const value = { capabilities: body.capabilities ?? [], billions };
+      this.info.set(key, value);
+      return value;
+    } catch {
+      return { capabilities: [], billions: null };
+    }
+  }
+
   async remove(model: string) {
     await this.request("/api/delete", { method: "DELETE", body: JSON.stringify({ model }), timeoutMs: 30_000 });
   }
@@ -128,6 +148,7 @@ export class Ollama {
     messages: ChatMessage[];
     options?: Record<string, unknown>;
     json?: boolean;
+    think?: boolean;
     signal?: AbortSignal;
   }): Promise<{ content: string; tokens: number; seconds: number }> {
     const res = await this.request("/api/chat", {
@@ -139,6 +160,7 @@ export class Ollama {
         messages: opts.messages,
         options: opts.options,
         format: opts.json ? "json" : undefined,
+        think: opts.think,
         stream: false,
         keep_alive: "15m",
       }),
@@ -160,6 +182,7 @@ export class Ollama {
     messages: ChatMessage[];
     tools?: ToolSpec[];
     options?: Record<string, unknown>;
+    think?: boolean; // only send for models with the "thinking" capability
     signal?: AbortSignal;
     onDelta?: (delta: { content: string; thinking: string }) => void;
   }): Promise<{ message: ChatMessage; stats: { tokens: number; seconds: number } }> {
@@ -171,6 +194,7 @@ export class Ollama {
         messages: opts.messages,
         tools: opts.tools?.length ? opts.tools : undefined,
         options: opts.options,
+        think: opts.think,
         stream: true,
         keep_alive: "15m",
       }),

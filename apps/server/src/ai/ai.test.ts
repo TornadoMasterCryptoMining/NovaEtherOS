@@ -35,6 +35,7 @@ function fakeOllama(script: ((body: any) => object)[]) {
     req.on("end", () => {
       if (req.url === "/api/version") return res.end(JSON.stringify({ version: "0.0.test" }));
       if (req.url === "/v1/chat/completions") return res.end(JSON.stringify({ model: JSON.parse(raw).model }));
+      if (req.url === "/api/show") return res.end(JSON.stringify({ capabilities: ["completion", "tools", "thinking"], details: { parameter_size: "0.8B" } }));
       if (req.url === "/api/tags") return res.end(JSON.stringify({ models: [{ name: "test-model", size: 1 }] }));
       if (req.url === "/api/chat") {
         const body = JSON.parse(raw);
@@ -194,7 +195,9 @@ test("Nova knows which model it runs on", async () => {
     const system = ollama.requests[0].messages[0];
     assert.equal(system.role, "system");
     assert.match(system.content, /qwen2\.5-coder:7b/);
-    assert.match(system.content, /not GPT-4/);
+    assert.match(system.content, /not an OpenAI model/);
+    // A 0.8B thinking model overthinks: "auto" turns its thinking off.
+    assert.equal(ollama.requests[0].think, false);
   } finally {
     ollama.close();
   }

@@ -340,6 +340,7 @@ export interface AISettings {
   default_model: string | null;
   num_ctx: number;
   auto_approve: boolean;
+  thinking: "auto" | "on" | "off";
   instructions: string;
 }
 

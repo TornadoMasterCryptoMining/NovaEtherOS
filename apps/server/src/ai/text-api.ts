@@ -176,6 +176,7 @@ export class TextAPI {
         messages: [...(ep.instructions ? [{ role: "system" as const, content: ep.instructions }] : []), { role: "user", content: prompt }],
         options: { temperature: ep.temperature, num_ctx: this.ai.contextSize },
         json: ep.json,
+        think: await this.ai.thinkFor(model, "off"), // one-shot text jobs: answer directly
         signal,
       });
     } catch (err) {

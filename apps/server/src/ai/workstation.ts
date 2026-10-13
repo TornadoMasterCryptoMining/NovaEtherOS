@@ -48,6 +48,9 @@ const defaults = {
   default_model: null as string | null,
   num_ctx: 8192,
   auto_approve: false,
+  // "Thinking" models reason before answering. Small ones overthink and loop,
+  // so "auto" only lets models of 4B parameters or more think.
+  thinking: "auto" as "auto" | "on" | "off",
   instructions: "", // extra instructions added to every chat
 };
 export type AISettings = typeof defaults;
@@ -56,11 +59,9 @@ function systemPrompt(chat: Chat, workspace: string, extra: string) {
   const lines = [
     "You are Nova, the AI agent built into NovaEtherOS, a personal home server (Debian Linux) that runs the owner's own Bitcoin node, solo mining pool and miners.",
     "You are an expert software engineer. Write correct, complete, working code and explain briefly what you did.",
-    // Small open models often claim to be GPT-4 or ChatGPT (their training data is full of
-    // its answers), so tell them exactly what they are.
-    `You run locally on the owner's own hardware through Ollama, using the open model "${chat.model}". ` +
-      `If asked what model or AI you are, say you are Nova running ${chat.model}. ` +
-      "You are not GPT-4, ChatGPT or any OpenAI model, and nothing is sent to OpenAI or any other cloud service.",
+    // Small open models often say they're GPT-4 (their training data is full of
+    // ChatGPT answers), so state plainly what this is, without making it a rule.
+    `You are Nova, running the open model ${chat.model} locally through Ollama on the owner's own hardware (not an OpenAI model).`,
   ];
   if (chat.mode === "agent") {
     lines.push(
@@ -143,6 +144,16 @@ export class AIWorkstation {
     return this.settings.get("default_model");
   }
 
+  // The `think` flag for a model, or undefined for models that can't think
+  // (sending it to those is an error).
+  async thinkFor(model: string, setting = this.settings.get("thinking")): Promise<boolean | undefined> {
+    const info = await this.ollama.modelInfo(model);
+    if (!info.capabilities.includes("thinking")) return undefined;
+    if (setting === "on") return true;
+    if (setting === "off") return false;
+    return (info.billions ?? 0) >= 4;
+  }
+
   get contextSize() {
     return this.settings.get("num_ctx");
   }
@@ -216,6 +227,7 @@ export class AIWorkstation {
     if ("default_model" in values) next.default_model = values.default_model ? String(values.default_model) : null;
     if ("num_ctx" in values) next.num_ctx = Math.min(Math.max(Number(values.num_ctx) || 8192, 2048), 131072);
     if ("auto_approve" in values) next.auto_approve = Boolean(values.auto_approve);
+    if ("thinking" in values) next.thinking = values.thinking === "on" || values.thinking === "off" ? values.thinking : "auto";
     if ("instructions" in values) next.instructions = String(values.instructions ?? "").slice(0, 4000);
     this.settings.update(next);
     return this.settings.snapshot();
@@ -381,6 +393,7 @@ export class AIWorkstation {
           ],
           tools: useTools ? TOOLS : undefined,
           options: { num_ctx: this.settings.get("num_ctx") },
+          think: await this.thinkFor(chat.model),
           signal,
           onDelta: (d) => {
             run.status = "Writing…";

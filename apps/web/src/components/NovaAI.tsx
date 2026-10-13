@@ -4,6 +4,7 @@ import {
   formatBytes,
   type AIChat,
   type AIMessage,
+  type AISettings,
   type AIStatus,
   type WorkspaceListing,
 } from "../api";
@@ -256,8 +257,11 @@ function MessageView({ m, live }: { m: AIMessage; live?: boolean }) {
   return (
     <div className={`msg assistant ${m.note ? "note" : ""} ${m.error ? "err" : ""}`}>
       {think && (
-        <details className="thinking" open={live && !text}>
-          <summary>{live && !text ? "Thinking…" : "Thought process"}</summary>
+        <details className="thinking">
+          <summary>
+            {live && !text ? "Thinking…" : "Thought process"}
+            <span className="faint"> · {think.split(/s+/).length.toLocaleString()} words</span>
+          </summary>
           <div className="think-text">{think}</div>
         </details>
       )}
@@ -552,6 +556,14 @@ function ModelsView({ status, refresh }: { status: AIStatus; refresh: () => void
             {[4096, 8192, 16384, 32768, 65536].map((n) => (
               <option key={n} value={n}>{n.toLocaleString()} tokens{n === 8192 ? " (default)" : n >= 32768 ? " (needs lots of RAM)" : ""}</option>
             ))}
+          </select>
+        </label>
+        <label className="field">
+          Thinking (models that reason before answering)
+          <select value={status.settings.thinking} onChange={(ev) => act(() => api.aiSettings({ thinking: ev.target.value as AISettings["thinking"] }))}>
+            <option value="auto">Automatic: only models of 4B+ think (small ones overthink)</option>
+            <option value="on">On: always think first (slower, sometimes smarter)</option>
+            <option value="off">Off: answer straight away (fastest)</option>
           </select>
         </label>
         <label className="check warn">
