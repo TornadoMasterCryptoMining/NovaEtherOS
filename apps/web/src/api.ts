@@ -14,6 +14,7 @@ export interface StoreApp {
   tagline: string;
   category: string;
   port: number;
+  path?: string; // web UI path, e.g. /admin/ for Pi-hole
   icon: string;
   installed: boolean;
 }

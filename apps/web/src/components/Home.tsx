@@ -68,7 +68,7 @@ export function Home({ onNavigate }: { onNavigate: (v: View) => void }) {
       <h2 className="section-title">Apps</h2>
       <section className="app-grid">
         {installed.map((a) => (
-          <a key={a.id} className="app-tile" href={`http://${location.hostname}:${a.port}`} target="_blank" rel="noreferrer">
+          <a key={a.id} className="app-tile" href={`http://${location.hostname}:${a.port}${a.path ?? ""}`} target="_blank" rel="noreferrer">
             <div className="app-icon">{a.icon}</div>
             <span>{a.name}</span>
           </a>

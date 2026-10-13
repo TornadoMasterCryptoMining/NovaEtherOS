@@ -66,7 +66,7 @@ export function AppStore() {
             </div>
             <div className="store-actions">
               {a.installed && (
-                <a className="btn" href={`http://${location.hostname}:${a.port}`} target="_blank" rel="noreferrer">Open</a>
+                <a className="btn" href={`http://${location.hostname}:${a.port}${a.path ?? ""}`} target="_blank" rel="noreferrer">Open</a>
               )}
               <button
                 className={a.installed ? "btn ghost" : "btn"}

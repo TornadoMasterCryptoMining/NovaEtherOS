@@ -12,6 +12,7 @@ export interface AppManifest {
   tagline: string;
   category: string;
   port: number;
+  path?: string; // where the web UI lives, if not at / (e.g. Pi-hole: /admin/)
   icon: string;
 }
 
