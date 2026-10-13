@@ -34,6 +34,7 @@ function fakeOllama(script: ((body: any) => object)[]) {
     req.on("data", (d) => (raw += d));
     req.on("end", () => {
       if (req.url === "/api/version") return res.end(JSON.stringify({ version: "0.0.test" }));
+      if (req.url === "/v1/chat/completions") return res.end(JSON.stringify({ model: JSON.parse(raw).model }));
       if (req.url === "/api/tags") return res.end(JSON.stringify({ models: [{ name: "test-model", size: 1 }] }));
       if (req.url === "/api/chat") {
         const body = JSON.parse(raw);
@@ -159,13 +160,18 @@ test("text API: keys, endpoints and the OpenAI passthrough", async () => {
     assert.deepEqual(seen[0].messages.map((m: any) => m.role), ["system", "user"]);
     assert.equal(textApi.snapshot().keys[0].calls, 1 + 2); // 401 doesn't count; the other calls do
 
+    // A stray full stop or quotes around the model name are forgiven.
+    const slip = await call("/v1/chat/completions", { model: "test-model.", messages: [{ role: "user", content: "hi" }] });
+    assert.equal(slip.status, 200);
+    assert.equal((await slip.json()).model, "test-model");
+
     // OpenAI-compatible routes need the key, then go straight to Ollama (the fake answers 404 here).
     assert.equal((await fetch(`${base}/v1/models`)).status, 401);
     const proxied = await fetch(`${base}/v1/models`, { headers: { "X-API-Key": key } });
     assert.equal(proxied.status, 404);
 
     // A wrong model name gets a helpful answer listing the installed models.
-    const wrong = await call("/v1/chat/completions", { model: "qwen2.5-coder:3b.", messages: [{ role: "user", content: "hi" }] });
+    const wrong = await call("/v1/chat/completions", { model: "qwen2.5-coder:3b", messages: [{ role: "user", content: "hi" }] });
     assert.equal(wrong.status, 404);
     assert.match((await wrong.json()).error.message, /Installed: test-model/);
   } finally {

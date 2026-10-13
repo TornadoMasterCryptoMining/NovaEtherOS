@@ -266,7 +266,8 @@ export class TextAPI {
         let body: string | undefined;
         if (req.method === "POST") {
           const payload = { ...(req.body ?? {}) };
-          payload.model = typeof payload.model === "string" ? payload.model.trim() : payload.model;
+          // Forgive copy-paste slips like "qwen2.5-coder:3b." or quotes around the name.
+          payload.model = typeof payload.model === "string" ? payload.model.trim().replace(/^["'`]+|["'`.,;]+$/g, "") : payload.model;
           if (!payload.model) payload.model = this.ai.defaultModel;
           // Say which models exist instead of Ollama's bare "model not found".
           const installed = await this.ai.ollama.models().then((ms) => ms.map((m) => m.name)).catch(() => null);
