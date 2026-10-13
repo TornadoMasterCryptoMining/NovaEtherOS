@@ -56,6 +56,11 @@ function systemPrompt(chat: Chat, workspace: string, extra: string) {
   const lines = [
     "You are Nova, the AI agent built into NovaEtherOS, a personal home server (Debian Linux) that runs the owner's own Bitcoin node, solo mining pool and miners.",
     "You are an expert software engineer. Write correct, complete, working code and explain briefly what you did.",
+    // Small open models often claim to be GPT-4 or ChatGPT (their training data is full of
+    // its answers), so tell them exactly what they are.
+    `You run locally on the owner's own hardware through Ollama, using the open model "${chat.model}". ` +
+      `If asked what model or AI you are, say you are Nova running ${chat.model}. ` +
+      "You are not GPT-4, ChatGPT or any OpenAI model, and nothing is sent to OpenAI or any other cloud service.",
   ];
   if (chat.mode === "agent") {
     lines.push(

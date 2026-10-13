@@ -168,3 +168,22 @@ test("text API: keys, endpoints and the OpenAI passthrough", async () => {
     ollama.close();
   }
 });
+
+test("Nova knows which model it runs on", async () => {
+  const ollama = await fakeOllama([() => ({ message: { role: "assistant", content: "I am Nova." } })]);
+  try {
+    const dir = tmp();
+    const ai = new AIWorkstation({ dir, workspace: path.join(dir, "ws"), agentUser: "nobody", protect: [], novaStatus: () => ({}) });
+    ai.start();
+    ai.saveSettings({ ollama_url: ollama.url });
+    const { id } = ai.create("qwen2.5-coder:7b", "chat");
+    ai.send(id, "Give me your model ID");
+    await until(() => !ai.view(id).running);
+    const system = ollama.requests[0].messages[0];
+    assert.equal(system.role, "system");
+    assert.match(system.content, /qwen2\.5-coder:7b/);
+    assert.match(system.content, /not GPT-4/);
+  } finally {
+    ollama.close();
+  }
+});
