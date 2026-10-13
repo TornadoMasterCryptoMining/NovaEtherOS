@@ -1,0 +1,8 @@
+services:
+  dozzle:
+    image: amir20/dozzle:latest
+    restart: unless-stopped
+    ports:
+      - "8089:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro

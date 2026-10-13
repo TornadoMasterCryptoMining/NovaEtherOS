@@ -1,0 +1,9 @@
+services:
+  home-assistant:
+    image: ghcr.io/home-assistant/home-assistant:stable
+    restart: unless-stopped
+    # Host networking so it can discover devices on your network. Web UI on port 8123.
+    network_mode: host
+    volumes:
+      - ${APP_DATA_DIR}/config:/config
+      - /etc/localtime:/etc/localtime:ro

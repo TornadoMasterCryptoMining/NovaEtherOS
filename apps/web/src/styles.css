@@ -616,3 +616,17 @@ details[open] > summary { margin-bottom: 8px; }
 }
 .miner-toolbar .auto-reconnect { margin: 0; flex-basis: 100%; color: var(--text-2); }
 .warn-inline { color: var(--warn); font-weight: 500; }
+.store-bar { display: flex; flex-direction: column; gap: 12px; margin-bottom: 18px; }
+.store-bar input[type="search"] { max-width: 380px; }
+.store-cats { display: flex; flex-wrap: wrap; gap: 6px; }
+.cat {
+  border: 1px solid var(--border); background: var(--surface); color: var(--text-2); border-radius: 999px;
+  padding: 5px 12px; font-size: 0.82rem; font-weight: 500;
+}
+.cat:hover { color: var(--text); border-color: var(--border-strong); }
+.cat.on { background: var(--accent-soft); color: var(--text); border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); }
+.store-card { align-items: flex-start; }
+.store-title { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.store-actions { display: flex; flex-direction: column; gap: 6px; align-self: center; }
+.store-actions .btn { text-decoration: none; }
+.store-note { margin-top: 20px; }

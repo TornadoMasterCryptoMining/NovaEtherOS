@@ -1,0 +1,10 @@
+services:
+  stirling-pdf:
+    image: stirlingtools/stirling-pdf:latest
+    restart: unless-stopped
+    environment:
+      DOCKER_ENABLE_SECURITY: "false"
+    ports:
+      - "8088:8080"
+    volumes:
+      - ${APP_DATA_DIR}/configs:/configs

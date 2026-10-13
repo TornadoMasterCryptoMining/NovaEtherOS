@@ -1,0 +1,11 @@
+services:
+  mealie:
+    image: ghcr.io/mealie-recipes/mealie:latest
+    restart: unless-stopped
+    environment:
+      ALLOW_SIGNUP: "false"
+      TZ: Etc/UTC
+    ports:
+      - "9925:9000"
+    volumes:
+      - ${APP_DATA_DIR}:/app/data

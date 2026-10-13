@@ -10,7 +10,7 @@ A self-hosted home cloud dashboard, inspired by UmbrelOS. Runs on a regular Debi
 - **Nova AI** — your own coding agent on local models (Ollama, native, no Docker): it writes files, runs commands and tests in a sandboxed workspace, with your approval
 - **One-click updates** — from the dashboard, or `sudo nova update`
 - **Dashboard** — sidebar navigation, live status bar, an Overview of node, mining, AI and machine health; light, dark or automatic theme, works on phones
-- **App Store** — install/uninstall self-hosted apps (Nextcloud, Jellyfin, Pi-hole, Uptime Kuma) as Docker containers
+- **App Store** — 16 one-click self-hosted apps as Docker containers: Nextcloud, Jellyfin, Home Assistant, Syncthing, File Browser, Navidrome, Audiobookshelf, Gitea, qBittorrent, Pi-hole, Uptime Kuma, Excalidraw, IT-Tools, Stirling PDF, Dozzle and Mealie
 - **Runs as a systemd service** — starts on boot, reachable from any device on your network
 
 ## Install on Debian

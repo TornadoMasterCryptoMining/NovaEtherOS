@@ -1,0 +1,10 @@
+services:
+  filebrowser:
+    image: filebrowser/filebrowser:s6
+    restart: unless-stopped
+    ports:
+      - "8085:80"
+    volumes:
+      - ${APP_DATA_DIR}/files:/srv
+      - ${APP_DATA_DIR}/database:/database
+      - ${APP_DATA_DIR}/config:/config
