@@ -9,7 +9,7 @@ A self-hosted home cloud dashboard, inspired by UmbrelOS. Runs on a regular Debi
 - **Blocks & Mempool** — live blocks, mempool and fee estimates from your own node
 - **Nova AI** — your own coding agent on local models (Ollama, native, no Docker): it writes files, runs commands and tests in a sandboxed workspace, with your approval
 - **One-click updates** — from the dashboard, or `sudo nova update`
-- **Dashboard** — live CPU, memory, storage and battery widgets
+- **Dashboard** — sidebar navigation, live status bar, an Overview of node, mining, AI and machine health; light, dark or automatic theme, works on phones
 - **App Store** — install/uninstall self-hosted apps (Nextcloud, Jellyfin, Pi-hole, Uptime Kuma) as Docker containers
 - **Runs as a systemd service** — starts on boot, reachable from any device on your network
 
@@ -55,7 +55,7 @@ NovaEtherOS manages the node (ported from the NovaMiningShop Umbrel app):
 
 It always keeps a reserve free for the OS (5% of the drive, 10–50 GB) and tunes the database cache, peers and mempool to the machine's RAM, using a bigger cache during the first sync.
 
-The **Bitcoin** page in the dock shows sync progress, storage plan, settings (Automatic / Full node / Prune to N GB), RPC connection details and a one-click mining check.
+The **Bitcoin → Node** page shows sync progress, storage plan, settings (Automatic / Full node / Prune to N GB), RPC connection details and a one-click mining check.
 
 ## Solo mining pool
 
@@ -83,7 +83,7 @@ For each miner it shows hashrate (now and 1 h), chip and regulator temperature, 
 
 ## Nova AI
 
-An AI agent workstation built into the dashboard (🤖 in the dock), running on your own hardware with [Ollama](https://ollama.com).
+An AI agent workstation built into the dashboard (**Nova AI** in the sidebar), running on your own hardware with [Ollama](https://ollama.com).
 
 1. **Nova AI → Models → Install AI engine** (or `sudo nova ai-install`). Installs Ollama natively as a systemd service, listening only on `127.0.0.1`, plus git, Python and build tools for the agent. If the external drive is set up, models are stored on it.
 2. Download a coding model. The list marks which ones fit in this machine's RAM next to the Bitcoin node; on an 8 GB machine, `qwen2.5-coder:3b` is the sweet spot.

@@ -9,6 +9,7 @@ import {
 } from "../api";
 import { usePoll } from "../usePoll";
 import { ApiPanel } from "./ApiPanel";
+import { Icon } from "./Icons";
 
 type Tab = "chat" | "models" | "api" | "files";
 
@@ -49,10 +50,10 @@ export function NovaAI() {
       </header>
 
       <div className="segmented ai-tabs">
-        <button className={tab === "chat" ? "on" : ""} onClick={() => setTab("chat")}>💬 Agent</button>
-        <button className={tab === "models" ? "on" : ""} onClick={() => setTab("models")}>🧠 Models{status && !ready ? " ·" : ""}</button>
-        <button className={tab === "files" ? "on" : ""} onClick={() => setTab("files")}>📁 Workspace</button>
-        <button className={tab === "api" ? "on" : ""} onClick={() => setTab("api")}>🔌 API</button>
+        <button className={tab === "chat" ? "on" : ""} onClick={() => setTab("chat")}>Agent</button>
+        <button className={tab === "models" ? "on" : ""} onClick={() => setTab("models")}>Models{status && !ready ? " ·" : ""}</button>
+        <button className={tab === "files" ? "on" : ""} onClick={() => setTab("files")}>Workspace</button>
+        <button className={tab === "api" ? "on" : ""} onClick={() => setTab("api")}>API</button>
       </div>
 
       {tab === "chat" && status && (ready ? <ChatView status={status} /> : <SetupHint status={status} onOpen={() => setTab("models")} />)}
@@ -197,7 +198,7 @@ function Messages({ chat, workspace }: { chat: AIChat | null; workspace: string 
     return (
       <div className="messages empty" ref={box}>
         <div className="ai-welcome">
-          <div className="ai-logo">🤖</div>
+          <span className="ai-logo"><Icon name="sparkles" size={26} /></span>
           <h2>What should Nova build?</h2>
           <p className="muted small">
             In <b>Agent</b> mode Nova reads and writes files in its workspace (<code>{workspace}</code>), runs commands and
