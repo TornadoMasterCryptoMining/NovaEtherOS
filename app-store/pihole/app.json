@@ -1,1 +1,17 @@
-{ "name": "Pi-hole", "tagline": "Network-wide ad blocking", "category": "Networking", "port": 8082, "path": "/admin/", "icon": "🛡️" }
+{
+  "name": "Pi-hole",
+  "tagline": "Network-wide ad blocking",
+  "category": "Networking",
+  "port": 8082,
+  "path": "/admin/",
+  "icon": "🛡️",
+  "secrets": [
+    {
+      "env": "PIHOLE_PASSWORD",
+      "label": "Password"
+    }
+  ],
+  "login": {
+    "hint": "Log in with this password. To block ads, set your router's DNS server to this machine's IP."
+  }
+}

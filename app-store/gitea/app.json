@@ -1,1 +1,10 @@
-{ "name": "Gitea", "tagline": "Your own private GitHub for code", "category": "Developer", "port": 3002, "icon": "🍵" }
+{
+  "name": "Gitea",
+  "tagline": "Your own private GitHub for code",
+  "category": "Developer",
+  "port": 3002,
+  "icon": "🍵",
+  "login": {
+    "hint": "Finish the setup page on your first visit. The first account you register becomes the admin."
+  }
+}

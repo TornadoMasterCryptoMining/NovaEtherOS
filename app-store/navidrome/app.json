@@ -1,1 +1,10 @@
-{ "name": "Navidrome", "tagline": "Your own music streaming server", "category": "Media", "port": 4533, "icon": "🎵" }
+{
+  "name": "Navidrome",
+  "tagline": "Your own music streaming server",
+  "category": "Media",
+  "port": 4533,
+  "icon": "🎵",
+  "login": {
+    "hint": "Create your account on your first visit; the first account is the admin."
+  }
+}

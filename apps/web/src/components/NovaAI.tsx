@@ -408,7 +408,7 @@ function Composer({
 
 // ---------------------------------------------------------------- markdown
 
-function copyText(text: string) {
+export function copyText(text: string) {
   if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text);
   // The dashboard is plain http on the LAN, where the clipboard API is off.
   const ta = document.createElement("textarea");

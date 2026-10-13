@@ -1,1 +1,11 @@
-{ "name": "File Browser", "tagline": "Browse, upload and share files from the web", "category": "Files", "port": 8085, "icon": "🗂️" }
+{
+  "name": "File Browser",
+  "tagline": "Browse, upload and share files from the web",
+  "category": "Files",
+  "port": 8085,
+  "icon": "🗂️",
+  "login": {
+    "user": "admin",
+    "hint": "The password for the first login is printed in Logs on first start. Change it under Settings → Profile."
+  }
+}

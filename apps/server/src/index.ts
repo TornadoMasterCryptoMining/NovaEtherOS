@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { config } from "./config.js";
 import { getSystemStats } from "./system.js";
-import { installApp, listInstalled, listStoreApps, uninstallApp } from "./apps.js";
+import { appLogin, appLogs, installApp, listInstalled, listStoreApps, resetAppLogin, uninstallApp } from "./apps.js";
 import { BitcoinNode } from "./bitcoin/node.js";
 import { Updater } from "./updater.js";
 import { SoloPool } from "./pool/pool.js";
@@ -204,6 +204,10 @@ app.post("/api/apps/:id/uninstall", async (req, res) => {
     res.status(500).json({ ok: false, error: (err as Error).message });
   }
 });
+
+app.get("/api/apps/:id/login", handle((req) => appLogin(String(req.params.id))));
+app.post("/api/apps/:id/login/reset", handle((req) => resetAppLogin(String(req.params.id))));
+app.get("/api/apps/:id/logs", handle(async (req) => ({ logs: await appLogs(String(req.params.id)) })));
 
 // Serve the built dashboard in production
 if (fs.existsSync(config.webDist)) {

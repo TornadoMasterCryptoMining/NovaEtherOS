@@ -1,1 +1,10 @@
-{ "name": "Audiobookshelf", "tagline": "Audiobooks and podcasts, streamed to any device", "category": "Media", "port": 13378, "icon": "🎧" }
+{
+  "name": "Audiobookshelf",
+  "tagline": "Audiobooks and podcasts, streamed to any device",
+  "category": "Media",
+  "port": 13378,
+  "icon": "🎧",
+  "login": {
+    "hint": "Create your account on your first visit; the first account is the admin."
+  }
+}

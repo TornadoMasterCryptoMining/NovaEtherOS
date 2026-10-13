@@ -1,1 +1,10 @@
-{ "name": "Stirling PDF", "tagline": "Merge, split, convert and edit PDFs privately", "category": "Productivity", "port": 8088, "icon": "📄" }
+{
+  "name": "Stirling PDF",
+  "tagline": "Merge, split, convert and edit PDFs privately",
+  "category": "Productivity",
+  "port": 8088,
+  "icon": "📄",
+  "login": {
+    "hint": "No login needed."
+  }
+}

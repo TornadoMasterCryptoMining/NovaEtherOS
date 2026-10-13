@@ -1,1 +1,10 @@
-{ "name": "IT-Tools", "tagline": "Handy tools for developers: converters, encoders, generators", "category": "Developer", "port": 8087, "icon": "🧰" }
+{
+  "name": "IT-Tools",
+  "tagline": "Handy tools for developers: converters, encoders, generators",
+  "category": "Developer",
+  "port": 8087,
+  "icon": "🧰",
+  "login": {
+    "hint": "No login needed."
+  }
+}

@@ -1,1 +1,10 @@
-{ "name": "Syncthing", "tagline": "Sync folders between your devices", "category": "Files", "port": 8384, "icon": "🔄" }
+{
+  "name": "Syncthing",
+  "tagline": "Sync folders between your devices",
+  "category": "Files",
+  "port": 8384,
+  "icon": "🔄",
+  "login": {
+    "hint": "No login at first. Set a username and password in Actions → Settings → GUI."
+  }
+}

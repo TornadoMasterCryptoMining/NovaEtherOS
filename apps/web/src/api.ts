@@ -19,6 +19,14 @@ export interface StoreApp {
   installed: boolean;
 }
 
+export interface AppLogin {
+  user: string | null;
+  hint: string | null;
+  secrets: { label: string; value: string | null }[];
+  can_reset: boolean;
+  needs_reset: boolean;
+}
+
 export type StorageMode = "auto" | "full" | "prune";
 
 export interface BitcoinSettings {
@@ -432,6 +440,9 @@ export const api = {
   apps: () => fetch("/api/apps").then((r) => json<StoreApp[]>(r)),
   install: (id: string) => fetch(`/api/apps/${id}/install`, { method: "POST" }).then(json),
   uninstall: (id: string) => fetch(`/api/apps/${id}/uninstall`, { method: "POST" }).then(json),
+  appLogin: (id: string) => fetch(`/api/apps/${id}/login`).then((r) => json<AppLogin>(r)),
+  appLoginReset: (id: string) => post(`/api/apps/${id}/login/reset`).then((r) => json<AppLogin>(r)),
+  appLogs: (id: string) => fetch(`/api/apps/${id}/logs`).then((r) => json<{ logs: string }>(r)),
   bitcoin: () => fetch("/api/bitcoin").then((r) => json<BitcoinStatus>(r)),
   bitcoinSettings: (s: Partial<BitcoinSettings>) => post("/api/bitcoin/settings", s).then((r) => json<BitcoinStatus>(r)),
   bitcoinRestart: () => post("/api/bitcoin/restart").then(json),

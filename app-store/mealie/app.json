@@ -1,1 +1,11 @@
-{ "name": "Mealie", "tagline": "Recipe manager and meal planner", "category": "Home", "port": 9925, "icon": "🍲" }
+{
+  "name": "Mealie",
+  "tagline": "Recipe manager and meal planner",
+  "category": "Home",
+  "port": 9925,
+  "icon": "🍲",
+  "login": {
+    "user": "changeme@example.com",
+    "hint": "Default password: MyPassword. Change both after logging in."
+  }
+}
