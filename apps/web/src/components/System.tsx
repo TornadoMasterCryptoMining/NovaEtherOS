@@ -10,7 +10,7 @@ export function System() {
     <div className="system">
       <header className="hero">
         <h1>Settings</h1>
-        <p className="muted">NovaEtherOS system settings</p>
+        <p className="muted">Storage and software updates</p>
       </header>
       <div className="panels">
         <StoragePanel />
@@ -72,7 +72,7 @@ function SoftwareUpdate() {
   const updating = Boolean(u?.running) || restarting;
 
   return (
-    <section className="panel glass wide">
+    <section className="panel wide">
       <h2>Software update</h2>
       {!u && !error && <p className="muted small">Loading…</p>}
       {u && (

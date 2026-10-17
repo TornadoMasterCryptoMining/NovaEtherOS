@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api, formatBTC, formatBytes, type BlockSummary, type ExplorerData } from "../api";
 import { usePoll } from "../usePoll";
+import { PageLoading } from "./ui";
 
 function timeAgo(unix: number, now: number) {
   const s = Math.max(0, Math.floor(now / 1000 - unix));
@@ -30,12 +31,7 @@ export function Blocks() {
   const now = useNow();
 
   if (!data) {
-    return (
-      <div className="hero">
-        <h1>Blocks & Mempool</h1>
-        <p className="muted">{error ?? "Loading…"}</p>
-      </div>
-    );
+    return <PageLoading title="Blocks and mempool" error={error} />;
   }
 
   const empty = data.blocks.length === 0;
@@ -43,7 +39,7 @@ export function Blocks() {
   return (
     <div className="blocks-page">
       <header className="hero">
-        <h1>Blocks & Mempool</h1>
+        <h1>Blocks and mempool</h1>
         <p className="muted">Live from your own Bitcoin node</p>
       </header>
 
@@ -105,7 +101,7 @@ function BlockCube({ block: b, now }: { block: BlockSummary; now: number }) {
         <span className="cube-reward">{formatBTC(b.reward, 3)}</span>
       </div>
       <span className="cube-foot small" title={b.pool}>
-        {b.pool === "NovaEtherOS" ? "⛏️ Your block!" : b.pool}
+        {b.pool === "NovaEtherOS" ? "Your block" : b.pool}
       </span>
     </div>
   );
@@ -114,7 +110,7 @@ function BlockCube({ block: b, now }: { block: BlockSummary; now: number }) {
 function MempoolPanel({ data }: { data: ExplorerData }) {
   const m = data.mempool;
   return (
-    <section className="panel glass">
+    <section className="panel">
       <h2>Mempool</h2>
       {!m ? (
         <p className="small muted">Waiting for data…</p>
@@ -153,7 +149,7 @@ function FeesPanel({ data }: { data: ExplorerData }) {
     ["~1 day", f.day],
   ];
   return (
-    <section className="panel glass">
+    <section className="panel">
       <h2>Fee estimates</h2>
       <p className="small muted">What senders are paying miners to get confirmed. These fees go to whoever mines the block.</p>
       <div className="fee-tiles">
@@ -170,7 +166,7 @@ function FeesPanel({ data }: { data: ExplorerData }) {
 
 function RecentBlocks({ blocks, now }: { blocks: BlockSummary[]; now: number }) {
   return (
-    <section className="panel glass wide">
+    <section className="panel wide">
       <h2>Recent blocks</h2>
       <div className="table-wrap">
         <table className="blocks-table">

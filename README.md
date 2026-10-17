@@ -165,7 +165,7 @@ data/         Runtime state and app volumes (git-ignored)
 Create `app-store/<id>/app.json`:
 
 ```json
-{ "name": "My App", "tagline": "What it does", "category": "Tools", "port": 8123, "icon": "🧩" }
+{ "name": "My App", "tagline": "What it does", "category": "Tools", "port": 8123 }
 ```
 
 and `app-store/<id>/docker-compose.yml`, using `${APP_DATA_DIR}` for any persistent volumes.

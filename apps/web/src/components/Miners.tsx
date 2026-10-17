@@ -7,6 +7,7 @@ import {
   type MinersStatus,
 } from "../api";
 import { usePoll } from "../usePoll";
+import { EmptyState, PageLoading } from "./ui";
 
 type Miner = MinersStatus["miners"][number];
 
@@ -39,19 +40,19 @@ export function Miners() {
     }
   }
 
+  if (!data) return <PageLoading title="Miners" error={error} />;
+
   return (
     <div className="miners-page">
       <header className="hero">
         <h1>Miners</h1>
-        <p className="muted">
-          {data
-            ? `${data.totals.online} online · ${formatHashrate(data.totals.hashrate)} · ${data.totals.power.toFixed(0)} W`
-            : (error ?? "Loading…")}
+        <p className="muted num">
+          {data.totals.online} of {data.miners.length} online · {formatHashrate(data.totals.hashrate)} · {data.totals.power.toFixed(0)} W
         </p>
       </header>
 
       {data && (
-        <div className="miner-toolbar glass">
+        <div className="miner-toolbar">
           <button className="btn ghost" disabled={data.scanning} onClick={() => api.minersScan().then(refresh)}>
             {data.scanning
               ? `Scanning… ${data.scan_progress.done}/${data.scan_progress.total}`
@@ -74,8 +75,11 @@ export function Miners() {
         </div>
       )}
 
-      {data && data.miners.length === 0 && !data.scanning && (
-        <p className="muted center">No miners found yet. Make sure they're on the same network, or add one by IP.</p>
+      {data.miners.length === 0 && !data.scanning && (
+        <EmptyState title="No miners found yet">
+          NovaEtherOS looks for Bitaxe-family miners on your network every 30 minutes. Make sure they're on the same
+          network, or add one by its IP address above.
+        </EmptyState>
       )}
 
       <div className="miner-grid">
@@ -108,7 +112,7 @@ function MinerCard({ m, limits, onChange }: { m: Miner; limits: MinersStatus["li
   }
 
   return (
-    <section className={`miner glass ${m.online ? "" : "offline"}`}>
+    <section className={`miner ${m.online ? "" : "offline"}`}>
       <div className="miner-head">
         <div>
           <strong>{name}</strong>

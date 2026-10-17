@@ -3,35 +3,23 @@ import { api, formatHashrate } from "../api";
 import { usePoll } from "../usePoll";
 import { syncPercent } from "./Bitcoin";
 import { Icon, Logo, type IconName } from "./Icons";
+import { StatusDot } from "./ui";
 
 export type View = "home" | "bitcoin" | "blocks" | "mining" | "miners" | "ai" | "store" | "system";
 
-export const NAV: { group: string; items: { id: View; label: string; icon: IconName; hint: string }[] }[] = [
-  { group: "", items: [{ id: "home", label: "Overview", icon: "home", hint: "Everything at a glance" }] },
-  {
-    group: "Bitcoin",
-    items: [
-      { id: "bitcoin", label: "Node", icon: "bitcoin", hint: "Your own Bitcoin Core" },
-      { id: "blocks", label: "Blocks & Mempool", icon: "blocks", hint: "Live from your node" },
-      { id: "mining", label: "Solo Pool", icon: "pickaxe", hint: "Your own solo mining pool" },
-      { id: "miners", label: "Miners", icon: "chip", hint: "Monitor and tune your miners" },
-    ],
-  },
-  { group: "Intelligence", items: [{ id: "ai", label: "Nova AI", icon: "sparkles", hint: "Local coding agent and API" }] },
-  {
-    group: "System",
-    items: [
-      { id: "store", label: "Apps", icon: "apps", hint: "Self-hosted apps" },
-      { id: "system", label: "Settings", icon: "settings", hint: "Storage and updates" },
-    ],
-  },
+export const NAV: { id: View; label: string; icon: IconName }[] = [
+  { id: "home", label: "Overview", icon: "home" },
+  { id: "bitcoin", label: "Node", icon: "bitcoin" },
+  { id: "blocks", label: "Blocks", icon: "blocks" },
+  { id: "mining", label: "Pool", icon: "pickaxe" },
+  { id: "miners", label: "Miners", icon: "chip" },
+  { id: "ai", label: "Nova AI", icon: "sparkles" },
+  { id: "store", label: "Apps", icon: "apps" },
+  { id: "system", label: "Settings", icon: "settings" },
 ];
 
-export const viewInfo = (v: View) => NAV.flatMap((g) => g.items).find((i) => i.id === v)!;
-
-// ----- theme: follow the system, or force light/dark -----
-
 type Theme = "auto" | "light" | "dark";
+const THEME_ORDER: Theme[] = ["auto", "dark", "light"];
 
 function loadTheme(): Theme {
   try {
@@ -51,110 +39,90 @@ function useTheme() {
     try {
       localStorage.setItem("nova-theme", theme);
     } catch {
-      // storage blocked
+      // storage blocked: the theme still applies for this visit
     }
   }, [theme]);
   return [theme, setTheme] as const;
 }
 
-export function Sidebar({ view, open, onChange, onClose }: {
-  view: View;
-  open: boolean;
-  onChange: (v: View) => void;
-  onClose: () => void;
-}) {
-  const [theme, setTheme] = useTheme();
-  const { data: sys } = usePoll(api.system, 30_000);
-  const { data: update } = usePoll(api.update, 300_000);
+function useNow(ms: number) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), ms);
+    return () => clearInterval(t);
+  }, [ms]);
+  return now;
+}
 
+const BLOCK_SECONDS = 600;
+
+// The header's clock is the chain tip of the owner's own node: block height,
+// minutes since that block, and a hairline that fills over the average 10 minutes.
+function ChainTip({ onOpen }: { onOpen: () => void }) {
+  const { data } = usePoll(api.explorer, 15_000);
+  const now = useNow(5_000);
+  const tip = data?.blocks[0];
+  const elapsed = tip ? Math.max(0, now / 1000 - tip.time) : 0;
+  const minutes = Math.floor(elapsed / 60);
   return (
     <>
-      <div className={`scrim ${open ? "show" : ""}`} onClick={onClose} />
-      <aside className={`sidebar ${open ? "open" : ""}`}>
-        <div className="brand">
-          <Logo />
-          <div>
-            <strong>Nova<span>EtherOS</span></strong>
-            <small>{sys?.hostname ?? "home server"}</small>
-          </div>
-          <button className="icon-btn only-mobile" onClick={onClose} aria-label="Close menu"><Icon name="close" /></button>
-        </div>
-
-        <nav className="nav">
-          {NAV.map((g) => (
-            <div key={g.group || "main"} className="nav-group">
-              {g.group && <div className="nav-title">{g.group}</div>}
-              {g.items.map((item) => (
-                <button
-                  key={item.id}
-                  className={`nav-item ${view === item.id ? "active" : ""} ${item.id === "bitcoin" ? "btc" : ""}`}
-                  onClick={() => onChange(item.id)}
-                >
-                  <Icon name={item.icon} />
-                  <span>{item.label}</span>
-                  {item.id === "system" && update?.available && <span className="nav-badge" title="Update available" />}
-                </button>
-              ))}
-            </div>
-          ))}
-        </nav>
-
-        <div className="sidebar-foot">
-          <div className="theme-switch" role="radiogroup" aria-label="Theme">
-            {(["auto", "light", "dark"] as const).map((t) => (
-              <button key={t} className={theme === t ? "on" : ""} onClick={() => setTheme(t)} title={`${t[0].toUpperCase()}${t.slice(1)} theme`}>
-                <Icon name={t === "auto" ? "monitor" : t === "light" ? "sun" : "moon"} size={16} />
-              </button>
-            ))}
-          </div>
-          <small className="faint">{update?.current ? `Version ${update.current.sha}` : "NovaEtherOS"}</small>
-        </div>
-      </aside>
+      <button className={`chain-tip ${tip ? "" : "idle"}`} onClick={onOpen} title={tip ? `Latest block from your node, ${minutes} min ago` : "Waiting for your node"}>
+        <span className="mono-label">Block</span>
+        <span className="num">{tip ? tip.height.toLocaleString() : "—"}</span>
+        {tip && <span className="faint num">{minutes < 1 ? "now" : `${minutes}m`}</span>}
+      </button>
+      <span className="tip-line" aria-hidden style={{ transform: `scaleX(${tip ? Math.min(1, elapsed / BLOCK_SECONDS) : 0})` }} />
     </>
   );
 }
 
-function useClock() {
-  const [now, setNow] = useState(new Date());
-  useEffect(() => {
-    const t = setInterval(() => setNow(new Date()), 15_000);
-    return () => clearInterval(t);
-  }, []);
-  return now;
-}
-
-export function TopBar({ view, onMenu, onNavigate }: { view: View; onMenu: () => void; onNavigate: (v: View) => void }) {
+export function Header({ view, onNavigate }: { view: View; onNavigate: (v: View) => void }) {
+  const [theme, setTheme] = useTheme();
   const { data: btc } = usePoll(api.bitcoin, 10_000);
-  const { data: pool } = usePoll(api.pool, 10_000);
-  const { data: ai } = usePoll(api.ai, 20_000);
-  const now = useClock();
-  const info = viewInfo(view);
+  const { data: miners } = usePoll(api.miners, 10_000);
+  const { data: update } = usePoll(api.update, 300_000);
 
-  const pct = btc ? syncPercent(btc) : 0;
-  const nodeTone = !btc ? "idle" : btc.node.state === "running" ? "ok" : btc.node.state === "error" || btc.node.state === "waiting_for_storage" ? "bad" : btc.node.state === "not_installed" || btc.node.state === "stopped" ? "idle" : "busy";
-  const nodeText = !btc ? "Node" : btc.node.state === "running" ? "Synced" : btc.node.state === "syncing" ? `Syncing ${pct.toFixed(1)}%` : btc.node.state.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
-  const online = pool?.workers.filter((w) => w.connected).length ?? 0;
-  const aiReady = Boolean(ai?.engine.reachable && ai.models.length);
+  const state = btc?.node.state;
+  const nodeTone = !btc ? "idle" : state === "running" ? "success" : state === "error" || state === "waiting_for_storage" ? "danger" : state === "not_installed" || state === "stopped" ? "idle" : "warning";
+  const nodeText = !btc ? "Node" : state === "running" ? "Synced" : state === "syncing" ? `Syncing ${syncPercent(btc).toFixed(1)}%` : state!.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
+  const nextTheme = THEME_ORDER[(THEME_ORDER.indexOf(theme) + 1) % THEME_ORDER.length];
 
   return (
-    <header className="topbar">
-      <button className="icon-btn only-mobile" onClick={onMenu} aria-label="Open menu"><Icon name="menu" /></button>
-      <div className="topbar-title">
-        <Icon name={info.icon} size={18} />
-        <span>{info.label}</span>
+    <header className="header">
+      <div className="header-row">
+        <button className="brand" onClick={() => onNavigate("home")} aria-label="NovaEtherOS overview">
+          <Logo size={24} />
+          <strong>NovaEtherOS</strong>
+        </button>
+        <div className="header-status">
+          <button className="chip" onClick={() => onNavigate("bitcoin")}>
+            <StatusDot tone={nodeTone}>{nodeText}</StatusDot>
+          </button>
+          <button className="chip hide-sm" onClick={() => onNavigate("miners")}>
+            <StatusDot tone={miners?.totals.online ? "success" : "idle"}>
+              <span className="num">{miners ? formatHashrate(miners.totals.hashrate) : "Miners"}</span>
+            </StatusDot>
+          </button>
+          <ChainTip onOpen={() => onNavigate("blocks")} />
+          <button className="icon-btn" onClick={() => setTheme(nextTheme)} aria-label={`Theme: ${theme}. Switch to ${nextTheme}`} title={`Theme: ${theme}`}>
+            <Icon name={theme === "auto" ? "monitor" : theme === "dark" ? "moon" : "sun"} size={16} />
+          </button>
+        </div>
       </div>
-      <div className="chips">
-        <button className="chip" onClick={() => onNavigate("bitcoin")} title="Bitcoin node">
-          <span className={`dot ${nodeTone}`} /> {nodeText}
-        </button>
-        <button className="chip hide-sm" onClick={() => onNavigate("mining")} title="Solo pool">
-          <span className={`dot ${online ? "ok" : "idle"}`} /> {pool ? `${formatHashrate(pool.hashrate)} · ${online} miner${online === 1 ? "" : "s"}` : "Pool"}
-        </button>
-        <button className="chip hide-sm" onClick={() => onNavigate("ai")} title="Nova AI">
-          <span className={`dot ${aiReady ? "ok" : ai?.engine.reachable ? "busy" : "idle"}`} /> {aiReady ? "AI ready" : ai?.engine.reachable ? "AI: no model" : "AI off"}
-        </button>
-        <span className="clock">{now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
-      </div>
+      <nav className="tabbar" aria-label="Main">
+        {NAV.map((item) => (
+          <button
+            key={item.id}
+            className={view === item.id ? "on" : ""}
+            aria-current={view === item.id ? "page" : undefined}
+            onClick={() => onNavigate(item.id)}
+          >
+            <Icon name={item.icon} size={16} />
+            {item.label}
+            {item.id === "system" && update?.available && <span className="tab-dot" aria-label="update available" />}
+          </button>
+        ))}
+      </nav>
     </header>
   );
 }

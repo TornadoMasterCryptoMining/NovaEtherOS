@@ -4,7 +4,6 @@
   "category": "Networking",
   "port": 8082,
   "path": "/admin/",
-  "icon": "🛡️",
   "secrets": [
     {
       "env": "PIHOLE_PASSWORD",

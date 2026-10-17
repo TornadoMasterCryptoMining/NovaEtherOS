@@ -3,7 +3,6 @@
   "tagline": "Live logs of your installed apps",
   "category": "Monitoring",
   "port": 8089,
-  "icon": "📜",
   "login": {
     "hint": "No login needed."
   }

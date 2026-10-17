@@ -14,7 +14,6 @@ export interface AppManifest {
   category: string;
   port: number;
   path?: string; // where the web UI lives, if not at / (e.g. Pi-hole: /admin/)
-  icon: string;
   // Passwords NovaEtherOS generates for the app, passed to docker compose as env vars
   secrets?: { env: string; label: string }[];
   // How to log in, shown on the Apps page

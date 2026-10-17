@@ -1,7 +1,8 @@
 import { useCallback, useState } from "react";
 import { api, type AppLogin, type StoreApp } from "../api";
 import { usePoll } from "../usePoll";
-import { copyText } from "./NovaAI";
+import { copyText } from "./Markdown";
+import { EmptyState, Monogram, PageLoading, Skeleton } from "./ui";
 
 export function AppStore() {
   const { data: apps, error, refresh } = usePoll(api.apps, 10000);
@@ -30,9 +31,11 @@ export function AppStore() {
   const show = (id: string, panel: "login" | "logs") =>
     setOpen(open?.id === id && open.panel === panel ? null : { id, panel });
 
-  const categories = ["All", "Installed", ...new Set((apps ?? []).map((a) => a.category).sort())];
+  if (!apps) return <PageLoading title="Apps" error={error} />;
+
+  const categories = ["All", "Installed", ...new Set(apps.map((a) => a.category).sort())];
   const q = query.trim().toLowerCase();
-  const shown = (apps ?? []).filter(
+  const shown = apps.filter(
     (a) =>
       (category === "All" || (category === "Installed" ? a.installed : a.category === category)) &&
       (!q || `${a.name} ${a.tagline} ${a.category}`.toLowerCase().includes(q)),
@@ -43,7 +46,7 @@ export function AppStore() {
       <header className="hero">
         <h1>Apps</h1>
         <p className="muted">
-          {apps ? `${apps.length} self-hosted apps · ${apps.filter((a) => a.installed).length} installed` : "One-click self-hosted apps"}
+          {apps.length} self-hosted apps · {apps.filter((a) => a.installed).length} installed
         </p>
       </header>
 
@@ -57,13 +60,20 @@ export function AppStore() {
       </div>
 
       {(error || actionError) && <p className="error">{actionError ?? error}</p>}
-      {apps && shown.length === 0 && <p className="muted center">No apps match.</p>}
+      {shown.length === 0 && (
+        <EmptyState
+          title="No apps match"
+          action={<button className="btn ghost sm" onClick={() => { setQuery(""); setCategory("All"); }}>Clear filters</button>}
+        >
+          Nothing matches "{query || category}".
+        </EmptyState>
+      )}
 
       <div className="store-grid">
         {shown.map((a) => (
           <div key={a.id} className={`store-card ${open?.id === a.id ? "expanded" : ""}`}>
             <div className="store-row">
-              <div className="app-icon">{a.icon}</div>
+              <Monogram name={a.name} />
               <div className="store-info">
                 <div className="store-title">
                   <strong>{a.name}</strong>
@@ -77,12 +87,12 @@ export function AppStore() {
               {a.installed && (
                 <>
                   <a className="btn" href={`http://${location.hostname}:${a.port}${a.path ?? ""}`} target="_blank" rel="noreferrer">Open</a>
-                  <button className={`btn ghost ${open?.id === a.id && open.panel === "login" ? "pressed" : ""}`} onClick={() => show(a.id, "login")}>Login</button>
-                  <button className={`btn ghost ${open?.id === a.id && open.panel === "logs" ? "pressed" : ""}`} onClick={() => show(a.id, "logs")}>Logs</button>
+                  <button className={`btn ghost ${open?.id === a.id && open.panel === "login" ? "pressed" : ""}`} onClick={() => show(a.id, "login")}>Show login</button>
+                  <button className={`btn ghost ${open?.id === a.id && open.panel === "logs" ? "pressed" : ""}`} onClick={() => show(a.id, "logs")}>View logs</button>
                 </>
               )}
               <button
-                className={a.installed ? "btn ghost push-right" : "btn"}
+                className={a.installed ? "btn ghost push-right" : "btn ghost"}
                 disabled={busy === a.id}
                 onClick={() => toggle(a)}
               >
@@ -139,7 +149,7 @@ function LoginPanel({ app }: { app: StoreApp }) {
   const login: AppLogin | null = data;
   return (
     <div className="store-panel">
-      {!login && <p className="small muted">{error ?? "Loading…"}</p>}
+      {!login && (error ? <p className="small error left">{error}</p> : <Skeleton height={48} />)}
       {login && (
         <>
           {login.user && (
@@ -176,7 +186,7 @@ function LogsPanel({ app }: { app: StoreApp }) {
         <span className="small muted">Last 300 lines from {app.name}. Look here for first-start passwords and errors.</span>
         <button className="link" onClick={refresh}>Refresh</button>
       </div>
-      <pre className="logs">{data?.logs ?? error ?? "Loading…"}</pre>
+      {data ? <pre className="logs">{data.logs}</pre> : error ? <p className="small error left">{error}</p> : <Skeleton height={120} />}
     </div>
   );
 }

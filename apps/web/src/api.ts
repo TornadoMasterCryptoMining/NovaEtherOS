@@ -15,7 +15,6 @@ export interface StoreApp {
   category: string;
   port: number;
   path?: string; // web UI path, e.g. /admin/ for Pi-hole
-  icon: string;
   installed: boolean;
 }
 
@@ -273,6 +272,7 @@ export interface MinersStatus {
     reconnect_at: number | null;
   }[];
   totals: { hashrate: number; power: number; online: number };
+  history: { t: number; hashrate: number; power: number; online: number }[]; // one sample a minute, last 24 h
   scanning: boolean;
   scan_progress: { done: number; total: number };
   last_scan: number | null;

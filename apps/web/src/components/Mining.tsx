@@ -8,6 +8,7 @@ import {
   type PoolStatus,
 } from "../api";
 import { usePoll } from "../usePoll";
+import { CheckMark, PageLoading } from "./ui";
 
 const short = (addr: string) => (addr.length > 20 ? `${addr.slice(0, 10)}…${addr.slice(-6)}` : addr);
 
@@ -33,12 +34,7 @@ export function Mining() {
   const now = useNow();
 
   if (!p) {
-    return (
-      <div className="hero">
-        <h1>Solo Mining</h1>
-        <p className="muted">{error ?? "Loading…"}</p>
-      </div>
-    );
+    return <PageLoading title="Solo pool" error={error} />;
   }
 
   const online = p.workers.filter((w) => w.connected).length;
@@ -46,16 +42,16 @@ export function Mining() {
   return (
     <div className="mining">
       <header className="hero">
-        <h1>Solo Mining</h1>
+        <h1>Solo pool</h1>
         <p className="muted">
           <span className={`pill ${p.ready ? "ok" : "busy"}`}>{p.ready ? "Mining" : "Waiting"}</span> {p.status}
         </p>
       </header>
 
       {p.found.some((b) => b.accepted) && (
-        <div className="banner glass found-banner">
+        <div className="notice success">
           <span>
-            🎉 You found {p.found.filter((b) => b.accepted).length === 1 ? "a block" : `${p.found.filter((b) => b.accepted).length} blocks`}!
+            You found {p.found.filter((b) => b.accepted).length === 1 ? "a block" : `${p.found.filter((b) => b.accepted).length} blocks`}.
             Latest: block {p.found.find((b) => b.accepted)!.height.toLocaleString()} ·{" "}
             {formatBTC(p.found.find((b) => b.accepted)!.reward, 4)}
           </span>
@@ -63,24 +59,24 @@ export function Mining() {
       )}
 
       <section className="widgets">
-        <div className="widget glass">
+        <div className="widget">
           <div className="widget-label">Your hashrate</div>
           <div className="widget-value">{formatHashrate(p.hashrate)}</div>
           <div className="muted small">{online} miner{online === 1 ? "" : "s"} online</div>
         </div>
-        <div className="widget glass">
+        <div className="widget">
           <div className="widget-label">Expected time to a block</div>
           <div className="widget-value">{p.expected_seconds ? formatDuration(p.expected_seconds) : "–"}</div>
-          <div className="muted small">Solo mining is a lottery: any share can win</div>
+          <div className="muted small">Every share is a lottery ticket for the whole block</div>
         </div>
-        <div className="widget glass">
+        <div className="widget">
           <div className="widget-label">Best share</div>
           <div className="widget-value">{p.best_share ? formatDifficulty(p.best_share.difficulty) : "–"}</div>
           <div className="muted small">
             {p.network_difficulty ? `Block needs ${formatDifficulty(p.network_difficulty)}` : " "}
           </div>
         </div>
-        <div className="widget glass">
+        <div className="widget">
           <div className="widget-label">Next block reward</div>
           <div className="widget-value">{p.template ? formatBTC(p.template.reward, 3) : "–"}</div>
           <div className="muted small">{p.template ? `Block ${p.template.height.toLocaleString()} · all yours` : " "}</div>
@@ -88,7 +84,7 @@ export function Mining() {
       </section>
 
       <div className="panels">
-        <section className="panel glass">
+        <section className="panel">
           <h2>Connect your miner</h2>
           <p className="small muted">In your Bitaxe / NerdMiner / Antminer pool settings:</p>
           <dl className="facts mono">
@@ -107,17 +103,17 @@ export function Mining() {
           </p>
         </section>
 
-        <section className="panel glass">
+        <section className="panel">
           <h2>Pool health</h2>
           <ul className="checks">
             <li className={p.ready ? "ok" : "bad"}>
-              <strong>{p.ready ? "✓" : "…"} Work from your node</strong>
+              <strong><CheckMark ok={p.ready ? true : null} /> Work from your node</strong>
               <span className="small muted">
                 {p.template ? `Building block ${p.template.height.toLocaleString()} with ${p.template.tx_count.toLocaleString()} transactions` : p.status}
               </span>
             </li>
             <li className={p.selftest ? (p.selftest.ok ? "ok" : "bad") : ""}>
-              <strong>{p.selftest ? (p.selftest.ok ? "✓" : "✗") : "…"} Block format self-test</strong>
+              <strong><CheckMark ok={p.selftest ? p.selftest.ok : null} /> Block format self-test</strong>
               <span className="small muted">
                 {p.selftest
                   ? p.selftest.ok
@@ -135,7 +131,7 @@ export function Mining() {
           {p.error && <p className="error small">{p.error}</p>}
         </section>
 
-        <section className="panel glass wide">
+        <section className="panel wide">
           <h2>Miners</h2>
           {p.workers.length === 0 ? (
             <p className="small muted">No miners yet. Point a miner at {p.host}:{p.port} to start.</p>
@@ -185,14 +181,14 @@ export function Mining() {
 
 function FoundBlocks({ found }: { found: PoolStatus["found"] }) {
   return (
-    <section className="panel glass wide">
+    <section className="panel wide">
       <h2>Blocks found</h2>
       <ul className="events">
         {found.map((b) => (
           <li key={b.hash} className={b.accepted ? "" : "error"}>
             <strong>Block {b.height.toLocaleString()}</strong> · {b.worker} · {formatBTC(b.reward, 8)} to{" "}
             <span className="mono">{short(b.address)}</span> · {new Date(b.time).toLocaleString()} ·{" "}
-            {b.accepted ? "accepted by the network ✓" : `rejected: ${b.result}`}
+            {b.accepted ? "accepted by the network" : `rejected: ${b.result}`}
           </li>
         ))}
       </ul>

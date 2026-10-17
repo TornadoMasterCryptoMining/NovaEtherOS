@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { api, formatBytes, type Drive } from "../api";
 import { usePoll } from "../usePoll";
+import { Icon, type IconName } from "./Icons";
+import { ErrorNote, Skeleton } from "./ui";
 
-function driveIcon(d: Drive) {
-  if (d.empty) return "🗂️";
-  if (d.transport === "usb") return "🔌";
-  return d.system ? "💻" : "💽";
+function driveIcon(d: Drive): IconName {
+  if (d.empty) return "card";
+  if (d.transport === "usb") return "usb";
+  return d.system ? "laptop" : "drive";
 }
 
 function connection(d: Drive) {
@@ -25,9 +27,9 @@ export function StoragePanel() {
   const busy = Boolean(s?.job.running) || (Boolean(startedFor) && Boolean(error));
 
   return (
-    <section className="panel glass wide">
+    <section className="panel wide">
       <h2>Storage</h2>
-      {!s && <p className="small muted">{error ?? "Loading…"}</p>}
+      {!s && (error ? <ErrorNote message={error} /> : <Skeleton height={96} />)}
       {s && !s.supported && <p className="small muted">Drives can only be managed on the NovaEtherOS machine.</p>}
       {s && (
         <p className="small">
@@ -42,7 +44,7 @@ export function StoragePanel() {
           return (
             <div key={d.path} className={`drive ${d.empty ? "dim" : ""} ${d.bitcoin ? "is-btc" : ""}`}>
               <div className="drive-head">
-                <span className="drive-icon">{driveIcon(d)}</span>
+                <span className="drive-icon"><Icon name={driveIcon(d)} size={20} /></span>
                 <div className="drive-title">
                   <strong>{d.model}</strong>
                   <span className="small muted">
@@ -57,7 +59,7 @@ export function StoragePanel() {
 
               {d.partitions.map((p) => (
                 <div key={p.path} className="folder">
-                  <span>📁</span>
+                  <Icon name="folder" size={16} />
                   <span className="mono small">{p.mountpoints[0] ?? `${p.path} (not mounted)`}</span>
                   <span className="small muted">
                     {p.label ? `${p.label} · ` : ""}
@@ -131,7 +133,7 @@ function ConfirmMove({ drive, onCancel, onStarted }: { drive: Drive; onCancel: (
   return (
     <div className="confirm">
       <p className="warn-text">
-        ⚠️ Everything on <strong>{drive.model}</strong> ({formatBytes(drive.size)}) will be <strong>erased</strong>. The
+        Everything on <strong>{drive.model}</strong> ({formatBytes(drive.size)}) will be <strong>erased</strong>. The
         drive is then formatted, mounted automatically at every boot, and the Bitcoin node moves onto it.
       </p>
       <label className="check">

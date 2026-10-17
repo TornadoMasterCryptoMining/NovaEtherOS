@@ -3,7 +3,6 @@
   "tagline": "Download torrents from a web interface",
   "category": "Downloads",
   "port": 8090,
-  "icon": "⬇️",
   "login": {
     "user": "admin",
     "hint": "On first start qBittorrent prints a temporary password in Logs. Set your own in Tools → Options → Web UI."

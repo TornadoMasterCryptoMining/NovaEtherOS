@@ -3,7 +3,6 @@
   "tagline": "Stream your movies, shows and music",
   "category": "Media",
   "port": 8096,
-  "icon": "🎬",
   "login": {
     "hint": "Create your account on your first visit; the first account is the admin."
   }

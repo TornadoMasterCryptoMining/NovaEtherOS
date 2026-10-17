@@ -1,7 +1,8 @@
 import { useState, type ReactNode } from "react";
 import { api, type AIStatus, type EndpointDraft, type TextEndpoint, type TextResult } from "../api";
 import { usePoll } from "../usePoll";
-import { CodeBlock } from "./NovaAI";
+import { CodeBlock } from "./Markdown";
+import { ErrorNote, Skeleton } from "./ui";
 
 const when = (t: number | null) => (t ? new Date(t).toLocaleString() : "never");
 
@@ -22,13 +23,13 @@ export function ApiPanel({ status }: { status: AIStatus }) {
     refresh();
   };
 
-  if (!data) return <p className="muted center">{error ?? "Loading…"}</p>;
+  if (!data) return error ? <ErrorNote message={error} /> : <Skeleton height={160} />;
 
   return (
     <div className="panels">
       <Keys keys={data.keys} onChange={refresh} />
 
-      <section className="panel glass">
+      <section className="panel">
         <h2>OpenAI-compatible API</h2>
         <p className="small muted">
           Works with existing tools and SDKs that speak the OpenAI API. Use your API key as the key and this base URL.
@@ -40,7 +41,7 @@ export function ApiPanel({ status }: { status: AIStatus }) {
         />
       </section>
 
-      <section className="panel glass wide">
+      <section className="panel wide">
         <div className="files-head">
           <h2>Text endpoints</h2>
           <button className="btn" onClick={() => setEditing({ draft: { template: "{{text}}", temperature: 0.4, json: false } })}>
@@ -123,7 +124,7 @@ function Keys({ keys, onChange }: { keys: { id: string; name: string; hint: stri
   }
 
   return (
-    <section className="panel glass">
+    <section className="panel">
       <h2>API keys</h2>
       <p className="small muted">
         Every API call needs a key: <code>Authorization: Bearer nova_…</code>. Make one per app so you can revoke it on its own.

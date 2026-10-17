@@ -3,7 +3,6 @@
   "tagline": "Hand-drawn style whiteboard and diagrams",
   "category": "Productivity",
   "port": 8086,
-  "icon": "✏️",
   "login": {
     "hint": "No login needed."
   }

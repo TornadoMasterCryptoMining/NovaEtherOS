@@ -3,7 +3,6 @@
   "tagline": "Control your smart home, locally",
   "category": "Smart home",
   "port": 8123,
-  "icon": "🏠",
   "login": {
     "hint": "Create your account on your first visit; the first account is the admin."
   }

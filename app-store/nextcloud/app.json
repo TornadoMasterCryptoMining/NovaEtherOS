@@ -3,7 +3,6 @@
   "tagline": "Your own private file cloud",
   "category": "Files",
   "port": 8081,
-  "icon": "☁️",
   "login": {
     "hint": "Create your account on your first visit; the first account is the admin."
   }

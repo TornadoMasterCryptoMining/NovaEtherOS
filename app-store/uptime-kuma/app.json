@@ -3,7 +3,6 @@
   "tagline": "Monitor your sites and services",
   "category": "Monitoring",
   "port": 3001,
-  "icon": "📈",
   "login": {
     "hint": "Create your account on your first visit; the first account is the admin."
   }

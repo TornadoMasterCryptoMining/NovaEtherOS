@@ -14,6 +14,9 @@ const SCAN_CONCURRENCY = 64;
 // after this long, and at most this often per miner.
 const RECONNECT_AFTER_MS = 90_000;
 const RECONNECT_COOLDOWN_MS = 20 * 60_000;
+// Fleet hashrate history for the dashboard chart: one sample a minute, 24 hours.
+const HISTORY_EVERY_MS = 60_000;
+const HISTORY_LENGTH = 24 * 60;
 const REQUEST_TIMEOUT_MS = 5_000;
 // Don't sweep huge networks: anything bigger than a /22 is limited to our /24.
 const MAX_SCAN_PREFIX = 22;
@@ -211,6 +214,7 @@ export class Miners {
   private poolReadySince = 0;
   private strandedSince = new Map<string, number>();
   private lastReconnect = new Map<string, number>();
+  private history: { t: number; hashrate: number; power: number; online: number }[] = [];
 
   constructor(dataDir: string) {
     this.state = new JsonStore<MinersState>(path.join(dataDir, "miners.json"), {
@@ -297,6 +301,11 @@ export class Miners {
         }
       }),
     );
+    const last = this.history.at(-1);
+    if (!last || Date.now() - last.t >= HISTORY_EVERY_MS) {
+      this.history.push({ t: Date.now(), ...this.totals() });
+      if (this.history.length > HISTORY_LENGTH) this.history.shift();
+    }
     await this.reconnectStranded();
   }
 
@@ -392,6 +401,17 @@ export class Miners {
     if (!res.ok) throw new Error((await errorFrom(res)).replace("the change", "the restart"));
   }
 
+  private totals() {
+    const online = [...this.live.entries()]
+      .filter(([id, l]) => l.online && l.info && this.state.get("miners").some((m) => m.id === id))
+      .map(([, l]) => summarize(l.info!));
+    return {
+      hashrate: online.reduce((sum, s) => sum + s.hashrate, 0),
+      power: online.reduce((sum, s) => sum + s.power, 0),
+      online: online.length,
+    };
+  }
+
   snapshot(poolHost: string, poolPort: number) {
     const miners = this.state.get("miners").map((m) => {
       const live = this.live.get(m.id);
@@ -417,14 +437,10 @@ export class Miners {
           : null,
       };
     });
-    const online = miners.filter((m) => m.online && m.stats);
     return {
       miners,
-      totals: {
-        hashrate: online.reduce((sum, m) => sum + (m.stats?.hashrate ?? 0), 0),
-        power: online.reduce((sum, m) => sum + (m.stats?.power ?? 0), 0),
-        online: online.length,
-      },
+      totals: this.totals(),
+      history: this.history,
       scanning: Boolean(this.scanning),
       scan_progress: this.scanProgress,
       last_scan: this.state.get("last_scan") || null,

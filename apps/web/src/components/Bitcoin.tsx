@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api, formatBytes, formatGB, type BitcoinSettings, type BitcoinStatus, type MiningCheck } from "../api";
 import { usePoll } from "../usePoll";
+import { CheckMark, PageLoading } from "./ui";
 
 const STATE_LABELS: Record<BitcoinStatus["node"]["state"], string> = {
   not_installed: "Not installed",
@@ -32,12 +33,7 @@ export function Bitcoin() {
   const { data: s, error, refresh } = usePoll(api.bitcoin, 5000);
 
   if (!s) {
-    return (
-      <div className="hero">
-        <h1>Bitcoin Node</h1>
-        <p className="muted">{error ?? "Loading…"}</p>
-      </div>
-    );
+    return <PageLoading title="Bitcoin node" error={error} />;
   }
 
   const { node, storage } = s;
@@ -47,7 +43,7 @@ export function Bitcoin() {
   return (
     <div className="bitcoin">
       <header className="hero">
-        <h1>Bitcoin Node</h1>
+        <h1>Bitcoin node</h1>
         <p className="muted">
           <StatusPill state={node.state} /> {node.version ? `${node.version} · ` : ""}
           {node.message}
@@ -68,7 +64,7 @@ export function Bitcoin() {
       </section>
 
       <div className="panels">
-        <section className="panel glass">
+        <section className="panel">
           <h2>Smart Storage</h2>
           {plan && (
             <>
@@ -128,7 +124,7 @@ export function Bitcoin() {
 
 function Stat({ label, value, percent, detail }: { label: string; value: string; percent?: number; detail?: string }) {
   return (
-    <div className="widget glass">
+    <div className="widget">
       <div className="widget-label">{label}</div>
       <div className="widget-value">{value}</div>
       {detail && <div className="muted small">{detail}</div>}
@@ -143,17 +139,27 @@ function Stat({ label, value, percent, detail }: { label: string; value: string;
 
 function RestartBanner({ onDone }: { onDone: () => void }) {
   const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
   return (
-    <div className="banner glass">
-      <span>New settings are saved. Restart Bitcoin Core to apply them.</span>
+    <div className="notice accent">
+      <div className="grow">
+        <strong>Restart Bitcoin Core to apply your settings</strong>
+        <p className="small">{err ? `Restart failed: ${err}` : "They're saved. Bitcoin Core takes a minute or two to shut down safely."}</p>
+      </div>
       <button className="btn" disabled={busy}
         onClick={async () => {
           setBusy(true);
-          await api.bitcoinRestart().catch(() => undefined);
-          setBusy(false);
-          onDone();
+          setErr(null);
+          try {
+            await api.bitcoinRestart();
+            onDone();
+          } catch (e) {
+            setErr((e as Error).message);
+          } finally {
+            setBusy(false);
+          }
         }}>
-        {busy ? "Restarting…" : "Restart now"}
+        {busy ? "Restarting…" : "Restart Bitcoin Core"}
       </button>
     </div>
   );
@@ -186,7 +192,7 @@ function Settings({ status, onSaved }: { status: BitcoinStatus; onSaved: () => v
   }
 
   return (
-    <section className="panel glass">
+    <section className="panel">
       <h2>Settings</h2>
       <div className="segmented">
         {(["auto", "full", "prune"] as const).map((m) => (
@@ -235,7 +241,7 @@ function Connect({ status }: { status: BitcoinStatus }) {
   const [reveal, setReveal] = useState(false);
   const c = status.connection;
   return (
-    <section className="panel glass">
+    <section className="panel">
       <h2>Connect</h2>
       <p className="small muted">Use these in pool software, Sparrow, Specter or Nunchuk (choose Bitcoin Core).</p>
       <dl className="facts mono">
@@ -265,16 +271,17 @@ function Connect({ status }: { status: BitcoinStatus }) {
 
 function MiningCheckPanel({ disabled }: { disabled: boolean }) {
   const [checks, setChecks] = useState<MiningCheck[] | null>(null);
+  const [checkError, setCheckError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   return (
-    <section className="panel glass">
+    <section className="panel">
       <h2>Mining check</h2>
       <p className="small muted">Tests that the node is synced, has peers and can build a block template for miners.</p>
       {checks && (
         <ul className="checks">
           {checks.map((c) => (
             <li key={c.name} className={c.ok ? "ok" : "bad"}>
-              <strong>{c.ok ? "✓" : "✗"} {c.name}</strong>
+              <strong><CheckMark ok={c.ok} /> {c.name}</strong>
               <span className="small muted">{c.detail}</span>
             </li>
           ))}
@@ -283,11 +290,17 @@ function MiningCheckPanel({ disabled }: { disabled: boolean }) {
       <button className="btn" disabled={busy || disabled}
         onClick={async () => {
           setBusy(true);
-          setChecks(await api.bitcoinMiningCheck().catch(() => null));
+          setCheckError(null);
+          try {
+            setChecks(await api.bitcoinMiningCheck());
+          } catch (e) {
+            setCheckError((e as Error).message);
+          }
           setBusy(false);
         }}>
         {busy ? "Checking…" : "Run mining check"}
       </button>
+      {checkError && <p className="small error left">The check couldn't run: {checkError}</p>}
     </section>
   );
 }
@@ -295,7 +308,7 @@ function MiningCheckPanel({ disabled }: { disabled: boolean }) {
 function Activity({ status }: { status: BitcoinStatus }) {
   const [logs, setLogs] = useState<string | null>(null);
   return (
-    <section className="panel glass wide">
+    <section className="panel wide">
       <h2>Activity</h2>
       {status.events.length === 0 && <p className="small muted">No events yet.</p>}
       <ul className="events">
